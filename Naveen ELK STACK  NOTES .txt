@@ -1,0 +1,1311 @@
+_____________LOGSTASH___________________________________________________________________________________________________________________________________________
+Logstash Filters
+
+mutate {
+		id => "ABC" #  Logstash will generate one. It is strongly recommended to set this ID in your configuration. This is particularly useful when you have two or more plugins of the same type
+		rename => { "@timestamp" => "fetch_time" }
+		add_feild => {"log_time" => " "}
+		copy => {"fetch_time" => "log_time"}
+		uppercase => { " "}
+		remove_feild=> {"offset", "prosepctor","@version',"source","host"}
+		merge => { "dest_field" => "added_field" }
+		split => { "fieldname" => "," }  #Split a field to an array using a separator character or string. Only works on string fields
+		strip => ["field1", "field2"]  #Strip whitespace from field. NOTE: this only works on leading and trailing whitespace.
+		capitalize => [ "fieldname" ] #Convert a string to its capitalized equivalent.
+		
+		
+		gsub => [
+      "phone_number", "[^0-9]", "",        # Remove all non-numeric characters
+      "phone_number", "^1", ""             # Remove leading '1' if it exists
+    ]
+	gsub => [
+          # replace all forward slashes with underscore
+          "fieldname", "/", "_",
+          # replace backslashes, question marks, hashes, and minuses
+          # with a dot "."
+          "fieldname2", "[\\?#-]", "."
+        ]
+		
+}
+###############GSUB##################
+
+The gsub function in Logstash is used within the mutate filter to perform substitution on fields using regular expressions. It allows you to replace parts of a string with another string, which can be very useful for cleaning up data, standardizing formats, or extracting useful information.
+
+
+
+##############CSV#####################################
+CSV 
+
+csv { 	skip#header => "true"
+		separtor = ","
+		columns => {"bookid","subject","author","publisher"}
+	}	
+###################DATE###############################################################
+
+The Date filter in Logstash is a powerful tool used to parse dates from log messages and convert them into a standardized format.
+The date filter is used for parsing dates from fields, and then using that date or timestamp as the logstash timestamp for the event
+The Logstash date filter plugin can be used to pull a time and date from a log message and define it as the timestamp field (@timestamp) for the log. Once defined, this timestamp field will sort out the logs in the correct chronological order and help you analyze them more effectively. 
+Interprets and converts date strings into a standardized date format.
+Supports various date formats and can handle timezone conversions.
+
+Handling Non-Standard Date Formats:
+Time Zone Conversion, Event Ordering, Timestamp Extraction:
+
+date {	
+	match => ["Timestamp","dd-MM-YYYY HH:mm:ss","MMM d YYYY HH:mm:ss"]
+	target => "Timestamp"
+	timezone => "UTC"
+}
+
+
+##################JSON###################################################################
+
+filter {
+ json { source =>"message"
+        target => "log" }
+ }
+
+##############K-V(KEY-value paires) fliter#################################
+
+filter {
+  kv {
+    source => "message"   # The field to parse for key-value pairs
+    field_split => " "    # The delimiter between different key-value pairs
+    value_split => "="    # The delimiter between keys and values
+  }
+}
+
+###############RUBY###########################
+ With help of the Ruby we can fetch required data.
+->The Ruby filter in Logstash allows you to write custom Ruby code to manipulate events in ways that are not possible with the built-in filters. This filter is useful when you need more complex processing or transformations on your log data.
+
+Custom Field Manipulation  :   ruby {
+    code => "
+      event.set('duration_minutes', event.get('duration').to_f / 60)
+    "
+  }
+  
+Conditional Logic  : Suppose you want to tag events based on the value of a field. For example, adding a high_duration tag if the duration field is greater than 120 seconds.
+
+ ruby {
+    code => "
+      if event.get('duration').to_i > 120
+        event.tag('high_duration')
+      end
+    "
+  }
+Data Enrichment
+Dynamic Field Creation
+
+###############Finger Print##################
+
+The fingerprint filter in Logstash is used to create a unique identifier (hash) for each event based on one or more fields. This is particularly useful for deduplication, traceability, or ensuring consistent unique identifiers across logs.
+
+1. Deduplication of Log Events Use Case: You have a log stream where duplicate log events might occur, and you want to ensure each log event is processed only once.
+filter {
+  fingerprint {
+    source => ["message"]
+    target => "[@metadata][fingerprint]"
+    method => "SHA256"
+  }
+  if "_fingerprint" in [tags] {
+    drop { }
+  } else {
+    mutate {
+      add_tag => ["_fingerprint"]
+    }
+  }
+}
+2.8. Detecting and Handling Event Collisions
+Combining Multiple Fields into a Unique Identifier
+ Ensuring Data Integrity
+ 
+###################GROK#################################
+
+GROK :-  Parses unstructured event data into fields.
+
+############AGE##########################################
+
+AGE :- A simple filter for calculatiing the age of an event. This filter calculating the age of an event by subtracting the event timestampe from the current timiestampe.
+
+filter { 
+			age {}
+			if [@metadata][age] >86400 {
+				drop {}   #Dro the feilds which greater than the value
+			} }
+###########DISSECT##############################################
+The Dissect filter plugin tokenizes incoming strings using defined patterns. It extracts unstructured event data into fields using delimiters. This process is called tokenization.  The Dissect filter in logstash is used to split a string into Mutliple feilds based on a set of dlimiters. Its designed to be a  simple and fast alternative to the grok filter for straight forward parsing tasks. While grok uses regular expressions dissect relies on fixed delimiters, making it more efficient for certain use cases. 
+
+EXAMPLE LOG :- 2024-05-18 12:34:56,123 - INFO - User login successful - user='john_doe' - ip='192.168.1.1'
+
+filter {
+  dissect {
+    mapping => {
+      "message" => "%{timestamp},%{milliseconds} - %{loglevel} - %{msg} - user='%{user}' - ip='%{ip}'"
+    }
+  }
+}
+
+sammple output :- {
+  "timestamp" => "2024-05-18 12:34:56",
+  "milliseconds" => "123",
+  "loglevel" => "INFO",
+  "msg" => "User login successful",
+  "user" => "john_doe",
+  "ip" => "192.168.1.1",
+  "message" => "2024-05-18 12:34:56,123 - INFO - User login successful - user='john_doe' - ip='192.168.1.1'",
+  "@version" => "1",
+  "@timestamp" => "2024-05-18T10:34:56.123Z",
+  "host" => "your-hostname"
+}
+
+### Cidr filter plugin ###
+
+Cidr :- in logstash the cidr filter is used to check wheather an IP address belongs to a certian range defined by CIDR notation.
+ -> CIDR ( classless inter-Domain Routing) is a method for allocating IP addresses an IP routing.
+ -> address :- Specfic the feilds in yout log data that contains the IP address to be checked.
+ -> Network -> A list of CIDR ranges that the IP address is compared against 
+
+Example :- 
+sample log data :- 
+ {	"@version" => "1", "@teimstamp" => "2022-01-24T14",  "messages " => " sending log event to logstahs\n", "host "=> "192.168.253.110" }
+ 
+ filter  {
+	cidr { 
+		address => ["%{host}"]
+		network => ["192.168.253.11/32", "192.168.253.112/32", "10.150.79.128/25"]
+		add_feilds => {"logtarget" => "test"}
+	}
+	cidr {
+		address => ["%{host}"]
+		network => ["192.168.253.115/32","192.168.253.116/32"]
+		add_feilds => {"logtarget" => "prod"}
+ }
+}
+
+###########################
+ 
+
+
+
+_________________________________ELASTICSEARCH_______________________________________________________________________________________________________
+
+#### INDEX ###
+-> Index : it is a logical collection of our data backed up by shards(primary and replicas).
+		PUT _cluster/setting{ "persistent": {"action.auto_create_index":false #shuts down autocreation}}
+		
+	Index configurations :- 1) Mappings 2)setting  3)Aliases
+	1) Mapping : Mapping is the process of creating a schema defination. Data that gets stores usually has multiplee data types associated with its fields, such as text, Keyword, long ,date.
+	2)Setting :- Every Index comes with a set of configuration setting such as number of shards and replicas refresh rate compression codec and other.
+	3)
+
+-> Index with custome setting :-  
+		1) Static settings:- static setting can only applied during the process of index creation and cannot be changed while the index is in operation. If you want to change the static setting of live index you need to close the index to reapply the setting or recreate the index with new settings althogether.
+		2) Dynamic settings :- Dynamic setting are those setting that we can modify on live.
+#### Should we want to reconfigure indices with new setting we need to carry our a few steps as 
+		1) close the current index (that is, index cannot support read/write operations)
+		2) create a new index with the new settings
+		3)Migrate the data from the old index to the new index (reindexing operation)
+		4) Repoint the alias to the new index ( assuming the index has an existing alisa)
+		
+#### Aliases ###
+
+-> Aliases :- Aliases are alternate names given to indices and an alias can point to a single or multiple indices. aliases are alternate names given to indices for various purposes :
+		-> Searching or aggregating data from multiple indices (as a single alias)
+		-> Enabling Zero downtime during re-indexing 
+		--- Creating an alias using an alias object --
+		PUT cars_for_aliases { "aliases": {"my_new_cars_alias": {}}}
+		Note :- we can also  create sinngle alias pointing to multiple indices.
+		--> car1, car2 ,car3 are three indices we can create one alias name like mutli_cars_alias
+		PUT cars1,cars2,cars3/_alias/multi_cars_alias
+		
+	## Migrating Data with Zero downtime using alias
+	1) Create an alias called vinatge-cars_alias to refer to the current index vintage_cars
+	2) Beacuase the new properties are incompatibale with the existing index create a new index say vinatge_cars_new with new settings
+	3)  Copy the data from the old index to new index 
+	4) Recreate your existing alias which pointed to the old index to refer to the newindex. Thus vintage_cars_alias will now be pointed to vintage_cars_new
+	5) Now all the queries that were executed against the vintage _cars alias are carried out on the new index.
+	
+###### Reading hidden indices #####
+ -> Ther are two types of indices the normal public indices and the hidden indices that we will look at now. similar to the hidden folder in our computer file systems that are prefixed with a dot. 
+		Note :- we can create a hidden index by simply executing the command PUT .old_cars
+		-> GET _all or GET * calls fetch all the indices including the hidden indices.
+		### Deleting documents from  multiple indices 
+		DELETE cars,movice,order ## it will delete given name indices.
+		Note:- Delleting indices accidentally can reult in permanent dat loss. when you are owkring with DELETE API  extereme caution is advised becaise accidental invocations can destablize the system.
+		## DEleting an alias explicitly 
+		DDELETE cars/_alias/cars_alias
+
+## Closing and opeing indices 
+	-> Closing indices:- Closing the index means excatly that it is closed for business and any operations on it will cease. There will be no indexing of documnets or search and analytic queries. 
+	POST cars/_closr?wait_for_active_shards=index-settings
+	##OPENING indices :- opening an index kick starts the shards back into business they are opne for indexing and searching once ready.
+### Index templates :- copying the same setting across various indices especially one by one is tedious and at times erroneous too.   The index template can have all the required template features (mapping, setting and aliases) contained within it. 
+		Template priority :- the index template carriers a priority a positive number defined when creating the template the higher the priority the higher the precedence. the priority when we have similar or the same setting describe in two different templates. if any index matches to more than one index template. the one with higher prioirty is used. for example the cars_template_mar21 overrides the cars_template_feb21 
+		POST _index_template/car_template_mar21 {"index_patterns": ["*cars*"], "pripority":20, "template: {}"}
+		POST _index_template/cars_template_feb21 {"index_patterns":["*cars*"], "priptoity":30, "template: {}"}
+		
+## Spliting the indices
+POST all_cars/_split/call_cars_new { "settings": {"index.number_of_shards":12}} NOTE:- we must make sure the index is disable for indexing (the index is changed to  a read-only index). to set index as read-only.
+	->1) the target index must not exist before this operation. This means other than the configuration that you provide in the request object while splitting an exact copy of source index is transferred to the target index.
+	-> 2) The number of shards in th etarget index must be multiple of the number of shards in the source index. if the  source index has 3 primary shards the target index can be defined with shards as multiple of 3.
+	->3) the target index primary shards can never be less than the source primary shards remmeber splitting allows more room for the index.
+	->4) The target index node mmust have adequate space Make sure the shards are allcated with the approproate space.
+	
+#### Shrinking an index 
+	-> it is opposite of splitting which is shrinking the index. While splitting the indices expands the index by adding additional shards for more space, shrinking is the opposite.it reduce the number of shards.
+	NOTE :- the first step is to make our index is read-only, so well set the index.blocks.write to true. we can  readjust the shards to single node.
+	PUT all_cars/_shrink/all_cars_new2
+	Note:- the number of shards must be smaller than the source index shards and of course the target index shards number must be a factor of the source index shard number.
+	
+##### ROlling over an index alias
+Example :- if we have an index app-0001, rolling over  creates a new index app-0002. if we rollover once again, another new index app-00003 is instantiated and so on.
+	->The rollover operation is heavily used when dealing with time-erires data.	
+	-> If the alias points to multiple indices at least one must be wriable index. 
+	POST latest_cars_a/_rollover
+		-> after API call  of rollover below will happen Backgeound
+			-> Create a new index with same configuration as the old one( The name prefix stays teh same but the suffix after a dash gets incremented).
+			-> Remaps the alis to point to the new index that was freshly generated 
+			-> Oure quereis are unaffected beacused all queries of courser were writtten against an alias
+			-> Deletes the alias on the current index and repoints it to the newly created rollover index.
+			Note:- The _rollover API has two fromats one where we can provide an index name and another where the system will deduce it as shown.
+			POST <index_alias>/_rollover   or POST <index_alias>/_rollover/<target_index_name>
+#### Index  life-cycle mangement(ILM)
+	for example we can define rules based on rolling over the current index to a new index when:
+		->The index reaches a certian size (say 40 GB for example)
+		-> The number of documnets in the index crossed say 10,000
+		-> the day is rolled over
+	AN index has five life-cycle phases 
+	1) Hot phase :- full operational mode the index is avaibale for both read and write operations
+	2) Warm phase:- Index is read -only so no indexing is allowed could allow frequent querying. Indexing is switched off but open fro querying so that the search and aggreagtion queries can still be server by this index.
+	3) Cold phase :- Read only index Querying is expected to be infrequent and slow. When the index is in this phase the search expected might result in slow response times.
+	4) Frozen Phase:- Read only index Querying is expected to be rare or very infrequent and sluggish
+	5)Delete phase:- Final stage index is deleted permanently.
+	NOTE :- Hot is the only mandatory phase the index can live in HOT mode for ever or  trannsition from HOT to any of the other optional modes.
+	 
+	## step 1 : Defining a LIFE-ccycle policy (creating the ILM Policy)
+	## step 2 :Assocaiating the policy with an index  ( Creating an indec with an asscoiated indec life cycle 
+### Life cycle policy with rollover
+ -> conditons are On each new day, when the maximum number of doucmnets hits 10,000
+ -> when the maximum index size reaches 10 GB
+	PUT _ilm/policy/hot_simple_policy 
+{ 
+ "policy": { 
+ "phases": { 
+ "hot": { #A 
+ "min_age": "0ms", #B 
+ "actions": { "rollover": { #C  "max_age": "1d", "max_docs": 10000, "max_size": "10gb" } } } } }
+
+	-> The next step is to create an indexing template attaching the life ocycle policy to it  .
+	
+	## Attching a life cycle policy to a template 
+	PUT _index_template/mysql_logs_template { "index_patterns": ["mysql-*"], #A "template":{ "settings":{ "index.lifecycle.name":"hot_simple_policy", #B  "index.lifecycle.rollover_alias":"mysql-logs-alias" #C } }} 
+	
+	
+	-> Final step is to create an index matching the index pattern defined in the index template.
+	### Setting the index as writable for the alias 
+	PUT mysql-index-000001 #A {  "aliases": {  "mysql-logs-alias": { #B  "is_write_index":true #C } }
+	
+NOTE:- BY default policie are scanned every 10 minutes . 
+
+
+----------------  Analyzer -----------------------------------------------------------------------
+## Differnce between the analyzer annd search ?
+	-> analyzer is used during indexing process. it break down text into tokens(smaller piecers usally words.), normalize them (converts to lowercase) adn can apply fiters.
+	->A search query is how you retrieve data from elasticsearch.It specifies how to match documents aaginst a given search input.
+
+-> Analyzer :- analyis refers to the process of converting text into terms that can be efficiently stored and searched.
+Analyzer has three phases  
+		1) Character filter
+		2)TOkenization 
+		3) Token Filtering 
+		
+	1) Character filters:- it is used to process the input text before tokenization. They can performs tasks like removing HTML tags, strip off unused characters replacing specific  charcaters example :(*&^$&@(#(@&#(@&##)
+	2) Tokenization :- standard tokenizaer split the text into words based on whitespace and punctution. example: "Quicj brown fox!" [Quick,brown, FOX]
+	3) Lowercase token filter  ( converts all token to lowercase)
+
+
+-> Only text feilds ar eanalyzed the rest are not elasticsearch analyzes only the text feilds before storing them into their respective inverted indices. any other data types wouldn't undergo text analysis. it also uses the same principle  of analyzing the query feilds when exceuting the serach query.
+
+-> Analyzer module :- it is a software module essentailly tasked with two functions: 
+				1)tokenization and 
+				2)normalization. 
+				
+			1)Tokenization :- Tokenization is aprocess of splitting sentence into indicidul words and it follows certians rules.
+			2) Normalization :- it is where the taoken are massaged tranformed modified and enriched in the form of stemming, synonyms, stop words and other features.
+				-> steeming :- it is an operation where the words are reduced to their root words ( for example author is a root word for authors authoring and authored.
+----> Anatomy of an analyzer module :- A) Character filter B) Tokenizer C) TOken filers
+		-> All text fields go thorugh this pipe: the raw text is cleaned by the charchter filters and the resulting text is passed on the tokennizer. the tokenizer thennsplits the text into tokens. the tokens then pass thorugh the token filter where they get modified enriched and enhanced . finally, finalized tokens are the stored in the appropriate invertedd indices. the search query gets analyzed too in the same manner as the indexing of the text.
+		<h2>Hello WORLD </h2>(Character filter)  ---->  Hello WORLD(TOkenizing the words  --> [Hello, WORLD] (TOken filter lower caseing the tokens) , [hello,world]
+-> Analyisi is the process that elasticsearch perofmrs on the bbody of a documnet before the document is sent off to be added to the inverted index. 
+ GET _analyze {"text" : "james Bond 007"}
+ 
+	->Standard :-where by default standard analyzer. we can explicity enable an anlyzer too.
+	GET   _analyze {"analyzer": "standard", "text" : "HOT cup of and a is a wired Combao"}
+	
+	POST my_index_with_stopewords_hidi/_analyze {"text" : ["#hindi sentence "], "analyzer": "standard_with stopwords_hindi"}
+GET _analyze { "text" : "james Bond 007 ", "analyzer" : "simple"}  # This tokens james adn bond (007 was truncated as opposed to three tokens from the early)
+
+	->Simple Analyzer :- A simple tokenizaer splits input text on any non letter such as whitespaces ,dashes , number etc. it lowercases the output tokens too.
+		While the standard analyzer breaks down the text into tokens when encounterd with whitespaces or punctuation the simple analyzer tokenizes the sentences at the occurence of a non letter like a number space apostrophe or hyphen. it does this by using a lowercase tokenizer which is not associated with any character or token filter.
+	
+	-> stop analyzer :- it is a simple analyzer  with english stop words enables by default. 
+	 PUT index_with_custom_english_analyzer { "setting" : {"analysis" : {"analyzer": {"index_with_custome_english_anlayzer": {"type": "english", "stopwords": ["a","an","is", "and", "for"]}}}}}
+	  #Tesing the custome stop words for the English analyzer  
+	  POST index_with_custom_english_analyzer/_analyze { "text" : "A dog is for a life", "analyzer": "index_with_custom_english_analyzer"}  # This code outputs just two tokens : dog and life the  wprds a is and for are remove as they match the stop words that we specified eralier
+	  
+	
+	->Whitespace analyzer :- the whiteapcse analyzer job is to tokenize input text based on whitespace delimiters.
+	
+	POST _analyze 
+{ 
+ "text":"Peter_Piper picked a peck of PICKLED-peppers!!", 
+ "analyzer": "whitespace" 
+}
+	["Peter_Piper", "picked", "a", "peck", "of", "PICKLED-peppers!!"] 
+	 Two points to note from the result the text was tokenized only on a whitespcae,it was not tokenized on dashes underscores and punctuation. the seocnd point is that the case is preserver. the captialization of the charcters and words were kept intact. 
+	-> Keyword analyzer :- the keyword analyzer doesn't mautate the input text. teh fields value is stored as is.
+	ex:- POST _analyze {"text": "Elasticsearch in Action", "analyzer": "keyword"}
+	output :- "Elasticsearch in Action" # Ther only one token that was produced as reult of processing the text via the keyword analyzer. There no lowercasing
+	
+	
+	-> language analyzer :- as the name suggests the language analyzer helps work with human languages. Elasticsearch dozens of language analyzers suzh as English, spanish, French Russina, Hindid and so on to work with different languages.
+	
+	POST _analyze {"text": "she sells sea shells", "analyzer": "english"} # we need to give the lanaguege accrodinf the sentence .
+	-> Pattern analyzer :- The pattern analyzer split the tokens based on a regualar expression. By default all the non word charcters help to split the sentence into tokens.
+	
+	PUT index_with_dash_pattern_analyzer #A 
+{ 
+ "settings": { 
+ "analysis": { 
+ "analyzer": { 
+ "pattern_analyzer": { #B 
+ "type": "pattern", #C 
+ "pattern": "[-]", #D 
+ "lowercase": true #E 
+ } 
+ } 
+ } 
+ } 
+} 
+
+	POST index_with_dah_pattern_analyzer/_analyze { "text": "1234-4567-8765-2342", "analyzer":"pattern_analyzer"}	
+	-> Fingerprint analyzer:- The fingerprint analyzer sorts and remove the duplicates tokens to produce a single concatenated token. The fingerprint analyzer removes duplicate words, exteneded charcters and sorts the words alphabetically to create a single token it  consistes of a standard tokenizer along with four token filter: Fingerprint, lowercase, stop words ASCII folding filter.
+	EX: POST _analyze {"text" : "A dosa is a thin pancake or crepe originating from south India. It is made from a fermented batter consisting of lentils and rice ", "analyzer ": "fingerprint"}
+	output:-  "a and batter consisting crepe dosa fermented from india is it lentils made of or orignating pancake rice south thin"
+	
+		## LETS look at an example of creating a custom analyzer  it has :- A charcter filter (htmp_strip) that strips some HTML charcters from the input field.  B) A a standard tokenizer that tokennizes the feild based on whitespace and punctuation C ) A TOken filter for upperccasing the words 
+		## Creating a custome analyzer with filter and tokenizer 
+		PUT index_with _custom_analyzer { "setting": {"analyzsis": {"custome_analyzer": {"type": "custom", "char_filter":["html_strip"], "tokenizer": "standard", "filter ": ["upppercase"]}}}}
+		
+	#### TYpes of Character filter :- 
+					1) HTML strip (HTML_STRIP) Filter: As the name suggests this filter strips the unwanted HTML tags from the input feilds.
+					2)Mapping Charcater filter :- it sole job is to match a key and replace it wih a value.  
+						POST _analyze { "text": "I am from UK ", "char_filter" : [{"type":"mapping", "mapping": ["UK"=> UNITED Kingdom"]}]
+					3) Pattern replace charcter filter :- The pattern_replace charcter filter as the name suggest replace the charcters with a new charcter when the field matched with a regular expression.
+					
+	#### N-gram and edge_ngram tokenizers :- the n-grams are a seuence of words for a given size prepared from a given word. Take as an example the word coffee . the two -letter n-grams usally called bi-grams are "co", "of","ff","fe" and "ee". similary the three -letter tri-grams are cof,off,ffe,fee.
+		on the other hand the edge_ngrams produce words with letter anchored at the begining og the word.  c, co ,cof ,coff,coffe and coffee 
+		-> The n-gram tokenizer emits  n-grams of minimum size as 1 and a mximum size of 2 by default.  POST _analyze {"text": "bond", "tokenizer":"ngram"} the output is :- [B,BO,O,on,n,nd,d]
+		-> EDGE_NGRAM :-   this invocation spits out these edge grams "bond" -> "b","bo", "bon", and  "bond". Note that all the words are anchored on the first letter.
+		
+	## Token Filter 
+			->The TOken produced by the tokenizers may need further enriching or enchnacements such as lowercasing the tokens, providing sysnoyms, developing steemming words, removing the apostrophes or punctuations and so on . Elasticsearch provide almost 50 token filter.
+			PUT index_with_token_filter {"setting": {"analysis":{"analyzer": {"token_filter_analyzer": {"tokenizer":"standard",filter : ["uppercase","reverse"]}}}}} #converting upper case and reverse
+			
+			A) Stemmer filter  :- bark -> barking, barked similar words
+			B)Shingle filter :-  shingles are the word n-grams that are generated at the token level : james bond emits as "james" and "james bond"  examples 2:- [Java python go ] => [java,java python, python ,  python  go , go]
+			c) Synonym filter :-with football and soccer. we can provide via file on filesystem.
+			
+	SUMMARY on analyzer :-
+		-> The trxt analysis is compoased of two phases tokenization and normalization. tokenization is where the input field is split into individual words or tokens, and normalization enhance the word. 
+		-> Elasticsearch provides a handful of out-of the box analyzers. we can mmix and match existing tokenizers with character or token filter to make custom analyzers that suit our  requirments.
+		
+		
+			
+		
+
+
+---------------------------Elasticsearch Watermark------------------------------------------
+-> Shard allocation is  the process of  allocating shards to nodes. This can happen during initiai recovery , replica allcation, rebalcaning or when nodes are addes or remmoved. One of  the main roles of the mmaster is to  decide which shards to allcoate to which nodes and when to move shards between nodes in order to rebalace the cluster.
+
+	-> you can use the follwoing setting to control shard allcoation and recovery 
+
+		"cluster.routing.allocation.enable":"all" # (default) Allows shard allocation for all kinds of shards.
+		"cluster.routing.allocation.enable":"primaries" #Allows shard allocation only for primary shards.
+		"cluster.routing.allocation.enable":"new_priaries" #Allows shard allocation only for primary shards for new indices.
+		"cluster.routing.allocation.enable":"none" #No shard allocations of any kind are allowed for any indices.
+		
+	-> Shard rebalncing settings: A custer is balanced when it has an equal number of shards on each node with all nodes needding equal resources withour having a  concentration of shrda from any index on any node.
+
+		=>"cluster.routing.allcation.allow_rebalance" # specify when shard rebalancing is allowed 
+			"cluster.routing.allcation.allow_rebalance" :"always" always allow rebalancing
+			"cluster.routing.allcation.allow_rebalance" :"indices_primaries_active" #ony when all priaries  in the cluster  are allocated
+			"cluster.routing.allcation.allow_rebalance" :"indice_all_active" #only when all shards (Primaries and replicas in the cluster are allocated.
+		=>cluster.routing.rebalance.enable # Enable or diable rebalcning for specfic kinds of shrads
+			"cluster.routing.rebalance.enable":"all" #Allows shard balancing for all kinds of shards
+			"cluster.routing.rebalance.enable":"primaries"
+			"cluster.routing.rebalance.enable":"replicas"
+			"cluster.routing.rebalance.enable":"none" #No shard balcning of anny kind are allowd for any indices.
+	->Rebalancing works by computing a weight for each node based on its allocation of shards adn then moving shards between nodes to reduce the weight of the heavier nodes and increase the weight of the lighter ones.
+
+	->DISK -BASED SHARD ALLCATION SETTING :
+		->There are various Watermark thresholds n your Elasticsearch cluster. 
+		1) Low Disk Watermark (cluster.routing.allocation.disk.watermark.low) :- As the disk fills up on a node the first threshold to be crossed will be the "Low disk watermark".  Deafault Setting : 85%
+		 Purpose :- when a node exceed the low watermark, Elasticsearch stops allocating new shard to that node to prevent it from filling up. However it will still allow reallcation of  shards within the cluter if  necessary.
+			cluster.routing.allocation.disk.watermark.low: 85%  # or "cluster.routing.allocation.disk.watermark.low: 50GB"
+
+		2)High Disk watermark threshold :-  The second thrshold will then be the High disk watermark threshold. Default setting :90%
+		Purpose :- when a node Exceeds the high watermark, Elasticsearch will actively relocated  shards away fromm the node to other nodes with sufficeient disk space.
+			cluster.routing.allocation.disk.watermark.high: 90%  # or "cluster.routing.allocation.disk.watermark.high: 20GB"
+		
+		3)Flood Stage Watermark:- it is final stage
+		Purpose: When a  node exceeds tha flood stage watermark, Elasticsearch sets the index to read-only to prevent any further writes. This is a protective measure to avoid running out of dick space commpletely which can lead to data corruption.
+		default setting : 95%
+		cluster.routing.allocation.disk.watermark.flood_stage: 95%  # or "cluster.routing.allocation.disk.watermark.flood_stage: 5GB"
+	-> Configure in elasticsearch.yml
+					cluster.routing.allocation.disk.watermark.low: 85%
+					cluster.routing.allocation.disk.watermark.high: 90%
+					cluster.routing.allocation.disk.watermark.flood_stage: 95%
+					
+		-> We can configure cluster setting with API :-
+					PUT _cluster/settings
+						{
+							"persistent": {
+									"cluster.routing.allocation.disk.watermark.low": "85%",
+									"cluster.routing.allocation.disk.watermark.high": "90%",
+									"cluster.routing.allocation.disk.watermark.flood_stage": "95%"
+						}
+					}
+	-> By default How Watermarks Work
+		1)Monitoring: Elasticsearch continuously monitors the disk usage of each node.
+		2)Threshold Breach:
+			When the disk usage of a node exceeds the low watermark, Elasticsearch stops allocating new shards to that node.
+			When the disk usage exceeds the high watermark, Elasticsearch relocates shards away from that node to balance disk usage across the cluster.
+			Note:- When the disk usage exceeds the flood stage watermark, Elasticsearch sets the affected indices to read-only to prevent further data ingestion and potential disk overrun.
+	->Preventing Disk Watermark Erros:
+		the Best way to avoid disk watermark error is to monitor the disk utilization of your cluster and take action before it occurs. You can set up monitors and alerts at  lower thresholds like 75 or 80 percent. This way you have tie to take action before Elasticsearch reached the firste watermark.
+		
+		1)Utilize IL policies
+		2)Utilize Data tier :- hot node to warm node, cold node
+	-> How to reslove this issue if it happen:
+		1) Delete old indices
+		2) Remmove documnets fromo existing indices
+		3) Reduce the number of replicas(on older indices)
+		4) Increase dick space on all nodes
+		5) Add new nodes to the cluster
+
+----------- INTER If we have closed the Index what are effects ? --------------------------------------------------------------------------------------
+
+A closed index is blocked for read/write operations and does not allow all operations that opened indices allow. It is not possible to index documents or to search for documents in a closed index. A closed index is restricted from read and write operations, meaning that it does not permit the same actions as an open index. This means you cannot index new documents or search for existing documents within a closed index. Essentially, a closed index is inactive and cannot be interacted with in the usual ways that an open index can.
+
+
+###########APM (APPLICATION PERFOMENACE  MONITORING########################
+
+APM Which means we can see excatly what happens in our  application  based on differnet metics, traces,transcation sample. example : where application is failure, multiple microservice communicating each other,  
+
+node js agent frontend and .net agent Backend --> Elastic APM Server  --> Send data to elasticsearch ->  Visulize with Kibana 
+
+APM is the solution for collecting, monitoring, and analyzing the end-to-end performance and behavior of transactions through your applications and the services they depend on. From the moment a user starts interacting with the application until they have achieved their desired results, APM tracks their experience. 
+
+a)End-to-end visibility
+1) Configure Elastic APM Server 
+
+APM AGENTS :- An APM Agent is  a library , plugin or extension that monitors the performance metrics. Depending on what you need to monitor and the langiage its written in you may need on or multiple agents. Once you have identified everything that you like to monitor , you will deply APM agents to each of these pieces . While agent vary per vendor, most agents insturment your code collect performance data and send your data to a server or collector.
+
+APM Agents collects :-
+		a)Distributed tracing
+		b)Spans :- Each unit or piece of the workfloe is called a span. Spans are what you would typically see in the waterfall view of an APM analysis tool. Usaully depicated in horizontal bars. These segments are the core of distributed tracing spans measure from the start to the end of an activity and contian infformation abppout the exceutaion of specific code path.
+				Common attribute of span inculde:  1) Start time , 2) Finainsh time, 3)A name 4)Atype.
+		c)Transactions :-  Transcations can include multiple spans as well as additional attributes like data about the environment in which the event is recorded.  Transcations are event that correspond to a logical unit of work. 
+						A few example of transactions : 1) A request to you server b) A bacth job c) A background job.
+		     Transactions have additional attributes associated with them like data  about the enviroment in which the event is recoreded.
+							->Service : envirmonet ,frame work , language etc
+							-> Host: Architecture hostname, IP etc
+							->process : args, PID, PPID etc
+							-> URL : full , domain, port,query etc
+							-> Users : email, ID , username etc
+			Traces:- traces are a detailed code -level record of  the actions performmed by an application. They mesaure the status and duration of method or function calls made with an application request. 
+					When paired together with logs and metrics from the application (and other aspects of your infrastructure), traces provide complete visibility into your entire ecosystem.
+					Traces provide complete visibility to your enitre ecosystem with a code level record of your applciations actions and their impact.
+USE Cases:- 
+	Instrumentation: APM agents automatically instrument your code to gather data on transactions, spans, and metrics. This instrumentation process is unintrusive and designed to minimize performance overhead.
+	Data Collection: Agents collect information on transaction durations, database queries, external API calls, and more. This data is then transmitted to the Elastic Stack for analysis.
+	Real-time Insights: The Elastic Stack processes the collected data and provides real-time insights through dashboards, visualizations, and alerts. This information is invaluable for identifying performance bottlenecks and issues.
+	Anomaly Detection: APM agents can also integrate with machine learning models to detect anomalies and unusual behavior, enabling proactive issue resolution.
+	
+Configuring APM Server and Agent.
+1)Download and unpack APM Server
+curl -L -O https://artifacts.elastic.co/downloads/apm-server/apm-server-8.13.4-amd64.deb
+sudo dpkg -i apm-server-8.13.4-amd64.deb
+2) Edit the configuration
+If you're using an X-Pack secured version of Elastic Stack, you must specify credentials in the apm-server.yml config file.
+output.elasticsearch:
+    hosts: ["<es_url>"]
+    username: <username>
+    password: <password>
+3)Start APM Server
+service apm-server start
+4)APM Server status
+Note :- Make sure APM Server is running before you start implementing the APM agents.
+
+5)Install the APM agent (Note: Here we are installing Node js agent becasue application is Node Js One if we are using diffferenct use different agnet accordingly )
+Install the APM agent for Node.js as a dependency to your application.
+npm install elastic-apm-node --save
+
+6)Configure the agent
+// Add this to the very top of the first file loaded in your app
+var apm = require('elastic-apm-node').start({
+  serviceName: 'naveen apm',
+  secretToken: 'gpgCGvVXavftpgaTND',
+  serverUrl: 'https://a55e72b4e072425788470ae4bad0fc04.apm.asia-south1.gcp.elastic-cloud.com:443',
+  environment: 'my-environment'
+})
+7) Launch the APM 
+8) if application is running autoaticaly in Kibana UI service will visible.
+
+				
+###########Elastic SIEM(Secuirty Information and Event management#################
+-> Elastic secuirty combines ELastic SIEM, Whose detection engine automates threat detection so you can quickly investigate and respond to threats and Endpoint Security into a single solution that unifies prevention, detection and response across entire netwoek.
+-> elastic security unifies  SIEM, SOAR, Endpoint secuirty, XDR and cloud security, equipping teams to prevent detect and respond the threats quickly and at scale practitoners are fighting on a unevn feild sophisticated adversaries limitied budgets , mounting pressures.  Visibility key to overcoming these challeneges. It come from direct access to all of you data and the power  to derive cruical insights within. With elastic there no suchh things as too much data eliminate blind spots by ingesting unlimites information. and normalizing it in a unifomr manner effiecitnely reatin years of data and analyze it in just seconds to expose lurking threats and newly  discoverd expolits.
+ ELastic secuirty information and event manegment(SIEM) is a part of the leatic stack (ELK Stack) which includes ELasticsearch, Logstash, Kibaan, and beats. It is designed to provide real-time secuirty monitory, threat detection and incident response capabilites by leverging the powerful search, analysis and viusliazation tools of the Elastic stack.
+ ELatic SIEM provides secuirty  teams with visibility, threat hunting, automated detection,  and Secuirty Operations Centre (SOC) workflows. Severity and risk scores asscocaited with singnals generated by the dectection rules enable analysts to rapidly triage issues and turn their attention to the highest-risk work.
+ Feature of elastic SIEM :-
+		1) Data Ingestion and Normalization
+		2) Real -time Monitoring and Alerting
+		3)Threat Detction
+		4) Incident Investigation
+		5) Visulaization and Dashboards
+		6) Integration with other Tools
+		7) Scalability and Flexibility
+		8)Secuirty and Analytics
+		
+ Benefits of the Elastic SIEM :- 
+			1) Comprehensive Security Visibiliy
+			2) Improved Threat Detection
+			3) Efficient Incident Response
+			4)Cost Efective
+----------------------- Searching  ----------------------------------------------------------
+-> There are tw variants of search in the world of elasticsearch : 	
+	1) strucutred search  :- in term-level serach extractly we can retiver the data.
+	2)unstructured search :-  Elasticsearch retrieve reuslts that are closely related to the query. the reuslts are scored based on how closly they are relevant to the criteria. The highly relevant results get higher scooring.
+	
+	NOTE:- we communicate with the elaticsearch engine using a RESTFUl API to execute queries. A search query is written using either a special query syntax called query DSL.
+	
+	## Search response ##
+	"took" : 8 -> the time it took to execute the search query on the nodes.  This is the time measures from when a coordinator node receives the request to the time it manage to aggreagte the reposne before sending it back to the client.
+	
+	"timed_out" : false -> Has the query timed out?
+	"_shards" -> How many shards succesfully returnd the results?
+	"hits" -> the  outer hits  object with total max_socre and inner hits array 
+	"max_socre" -> Highest score across all of the returnd documents
+	""
+	##How the serach request will work?
+	-> When a search request is received from a useror a client the engine froward that request to one of the available node in the cluster. every node in the cluster us by default assigned to a coordinator role. hence making  every node eligible for piking up the client requents on a round-robin basis. Once the request reaches the coordinator node it then determines the node on which the shards of the concerned documents exist. 
+	not every node that receives the request is necssarily a  datanode.
+	
+-> We can accessing the search endpoint in two ways :- URI request :- with this method we pass the search query along the endpoint as parameter to the query . Example :- GET movides/ _search?q=title:Godfather (fetches all the movies mathcing the word godfather in the title )
+Query DSL :- With this method Elasticsearch implements a domian -specific language example : GET movies/_search {"query": {"match":{"title": "godafather"}}
+	
+	A bool query where no socre returns.
+#########Query DSL(Domain Specific Language ########
+Elasitc search provide a full Query DSL (DOmain specific langaue) based on JSON to define queires. DSL consisti of two types of clasuses. it is useful for search including filters, aggregations and sorting.
+
+1) Leaf Query clasues :- Leaf query clasues look for a particular feild  such as match ,term, or range queries.
+2) Compound query clasuses :- Coumpund query calsues wrap other leaf or compound queires and are used to combine multiple queries in a logical fashion or  to alter their behaviour.
+Note :- ALLOw  Expensive queires : certain types of quries will generally excute slowly due to the way tehy are implemented which can affect the stability of the cluster.
+
+-> To retrive all documents from a Elasticsearch index using Query DSL we use "match_all_query".  it is similar to select * from table in MySQL
+GET MyIdex/_search
+{	
+	"query" : { 
+		"match_all" :{} }
+		}
+	1)"query" => is the key indicating that we are defining a query
+	2)"match_all" => is the query type used to match all documents.
+Note :- if we excute the query you will notice that you got only 10 documnets but not all documents. Beacuse Elastic only returns 10 documents by defalut.
+
+{ "size" : { #size : specifies that yu want to retive a maximum of 100 documents
+	"query" : {
+	"match_all" : {}
+	}} 
+}
+
+-----
+{ "query" : { "match_phrase" : { "description" : "The blog is very infromative" }}}    ## it will give documents containing the exact phrase this blog is very infromative  yout "match_phrase query would like this"
+
+---1) BOOl Query :- it is a compund query that allows you to combine mutliple queries using boolean logic. it has four main clasues :- must , filter , should and must not 
+		GET /_search { "query " : { "bool" : {
+			"must" : [ { "match" :  { "title" : "elasticsearch " }},  { "match" : { "content" : "query " }} ] ,
+				"filter" : [ { "range" : { "publish_date " : { "gte": "2024 " }}],
+				"should ": [ { "match" : { "tags" :"tutorial" }} ], 
+				"must_not" : [ { "match" : { "status :"daraft" }}] 
+				} } } 
+
+--2)Boosting Query :- Bossting query allows you to influence the relevance sore of documents by increasing or decreasing the score of documents that match.
+
+--3) Match Query :- The match query is used to search for documents containing the specified query terms. 
+Get /search 
+{ 	"query" : {  "match " : { "message" : { "query" : "quick brown fox" }}}}
+--4) Range Query  : the range Query is used to search for  documents  containg values with the specified range . it allowa you to search against numeric and data feilds. 
+Get /_search 
+{	"query" : { "range" :  {
+"date " : { "gte" : "2020-10-01" , "it : 2023-10-02"}} }} 
+--4) Multi-match Query  :- The muti-match query allows you to search for a term in mutiple feilds with the option to sepcify different types of matching, such as best feilds, most feilds or cross feilds.
+Get /_search 
+{	"query" : { "muti_match": { "query" : "elasticsearch", "feilds" : ["titele3 ", "content", "tags "], "type" : "best_friedns " }}}
+####  sorting  -> GET movies/_search {"query": {"match": {"genre": "crime"}}, "sort": [{"rating": {"order": "desc"}}}]}  # Sorting the result by a field. sorting will be done by relevancy score.
+	
+		GET movies/_search {"size":10#pagination, "query": {"match": {"genre": "crime"}}, "sort": [{"rating": {"order":"asc"}}, {"release_date": {"order":"asc"}}]}
+		
+
+
+########  URI request search #####
+-> GET movies/_search?q=title:Godfather ## A search query to fetch all movie mathcing Godfather
+
+-> GET movies/_search?q=title:Godfather Knight shawshank
+
+####  CURL FORMAT ####
+curl -XGET "https://localhost:9200/movies/_search?q=title:Godfather Knight shawahnk"
+
+### Pagination -> Query to fetch a speciffi number of results  -> GET movies/_search { "size";20, "query": {"match_all": {}}}
+
+	Pagination results using size and from -> GET movies/_search {"size":100,"from":3,"query":{"match_all":{}}}
+	
+
+#############################LUCENE Query lanague######
+
+Lucene is an open source Java full text search library which makes it easy to add search functinality to an application or website 
+
+##############################
+Diagnotics commands 
+
+sudo ./diagnostics.sh --host elasticsearch1 -u elastic -p --bypassDiagVerify --ssl --noVerify
+sudo ./diagnostics.sh  --host dc2cpvelkkib001  -u elastic -p --bypassDiagVerify --ssl --noVerify -type kibana-api 
+sudo ./diagnostics.sh --host dc2cpvelkkib001 -u kibana_system -p --bypassDiagVerify --ssl --noverify --type kibana-api --port 443
+
+
+###############
+##############################
+-> Scripted fields :- we may at time need to compute a field on the fly add it to the response. example : we want to set a movie as top rated if it falls within the highest ratings returned.
+	GET movies/_search {"_source": ["title","synopsis","rating"], "query": {"match": {"certificate": "R"}}, "script_fields": {"top_rated_movie": {"script": {"lang": "painless", "source": "if (doc['rating'].vale ?9.0 )'true';else 'false'"}}}}
+	
+Scripted metric aggregation :- A metric aggregation that executes using scripts to provie a metric output. 
+
+-> init_script :- it is exceuted once on each shard at the very begining of the process to intialize the state
+-> map_script:- will run once for each documnet selected by the query on each shard of your index.
+->combine_script :- will be executed once on each shard after map_script into a summarize each of the per-document values produces by map_script into a single value fot  the whole shard.
+-> reduce_script :- will  be executed once on the coordinator node after receiving all shard specifi values produce by combined_script.
+
+POST index/_search
+{
+  "size": 0,
+  "aggs": {
+    "average_marks": {
+      "scripted_metric": {
+        "init_script": "state.marks = [];",
+        "map_script": """ for (subject in params._source.subjects.values()) { state.marks.add(subject); } """,
+        "combine_script": "return state.marks;",
+        "reduce_script": """double total = 0; int count = 0; for (marks in states) {for (mark in marks) {total += mark;count++; }}return total / count;"""
+      }
+    }
+  }
+}
+
+POST index/_search
+{
+  "size": 0,
+  "query": {
+    "match_all": {}
+  },
+  "aggs": {
+    "my_metric": {
+      "scripted_metric": {
+        "init_script": "state.price = []", 
+        "map_script": "state.price.add(doc.price.value)",
+        "combine_script": "state.price.stream().mapToInt(Integer::intValue).sum()",
+        "reduce_script": "states.stream().mapToInt(Integer::intValue).sum()"
+      }
+    }
+  }
+}
+#### SUMMARY OF SEARCH ###
+-> Searching can be categorized into structured and unstructured search types.
+-> Structurd data works non text fields like numeric and data fields, or fields that are not analyzed during indexing time  and produce binary results 
+-> unstructured data deals with text fields that are expected to carry a relevancy socirng the engine socres the results based on how well the resultant documents match the criteria.
+-> We use a term-level search for structures queires and a full text search for unstructured data.
+-> Every search request is processed by one of the coordinator nodes. it is the responsibility of the coordinator nodes to ask other nodes to excute the query, return the partial data, aggregate it and respond to the client with a final result.
+-> Elasticsearch exposes a _search endpoint for queires and aggreations. we can invoke the _search endpoint by using ethier a URI request with parameters or building a full request using a special syntax called QUery DSL.
+-> There are cross-cutting features avaialble for most tyeps of queries (for example pagination, highlighting, explanation of the scoring manipulation of the results and so on.)
+
+##### TERM -Level search ####
+-> Termlevel search is designed to work with structured data such as numbers dates IP address enumerations keyword types and others. We use term-level queries to find an exact match. 
+	note:- term-level queries is that the queries are not analyzed (unlike full -text queires). The terms are matched against the words stored in the inverted index without having to apply the analyzers to match the indexing pattern.
+	
+	->Term queries :- the term query fetches the documents that excatly match a given field. The feild is not analyzed instead it is matched against the value that stored as is during the indexing in the inverted index.
+	
+	->Ids queries :-  GET movies/_search { "queries": {"ids": {"values":[10,4,6,8]}}
+	
+	-> Exists queries:- GET movies/_search {"query":{"exists": {"field":"title"}}} # Running an exists  query to check if a field exists
+
+	-> Range  queires :- GET  movies/_search {"query":{"range":{"rating":{"gte":9.0,"lte":9.5}}}}
+	-> gt  -> Greater than , gte -> greater than or  equal  to -> lt -> Less than -> lte ->  Leas  than or  equal to 
+	-> wild  card :- *(asterisk) :- Lets you search for zero  or more charcters 
+	?(question mark) :- Lets you search for single charcter.
+	-> Prefix queries:-  GET movies/_search {"query": {"prefix": {"actors.originnal":{"value":"mar"}}}}  Note Prefix query is an expensive query.
+		-> Fuzzy queires:- The principle bheind this type of query is called fuzziness. example if we search for  cake can fetch take, bake,lake, make.
+		
+		NOTE :- Fuzzy vs wildcard query :- unlike wildcard query where a wildcard operator such as * or ?. fuzzy  query deosn't use operators and instead goes the task of fetching similar words using Levenshtein edit distance algorithm.
+		
+	
+	
+########### Hot phase , Warm phase, Cold phase , Frozen phase#####################################
+
+1) Hot Phase (data_hot) : Store your most recent, most frquently-serached data in the hot tier. The hot tier provides tha best indexing and search perfomance by usnig the mmost powerful expensive hardware.
+		->full operational mode, the index is available for both read and write operation.
+		-> nodes handle the indexing timeseries data that such as logs metrics and hold your most recent most frequenlty accessed data.
+		-> Nodes in the hot  tier need to fast for both reads and wirtes, which requires more hardware resources and faster strage. For resileincy,  indcies in the hot  tier should be configured to use one or more replicas.
+		-> The hot tier is rewuired.New indices that are part of a data  stream are automatically allcoated to the hot tier.
+		
+
+
+2) Warm Phase (data_warm): Move data to the warm you are still likely to search it, but infrequently need to update it. The warm tier is optimmized for search perfomance over indexing performance.
+		->Index is read-only, so no indexinf is allowd. Could allow frequent quering.
+		-> nodes hold timeseries data that is accessd less-frequenlty and rarely needs to be updated.
+		-> The warm tier generally dont need to be as fast as those in the hot tier. for resiliency indices in the warm tier should be configured to use one or more replicas.
+
+3) Cold Phase(data_cold) : Move data to the cold tier when you are searching it less often and not normally update it. the cold tier is optimzed for cost saving over search perfomance.
+		->Read only index Querying is expected  to be infrequent and slow.
+		->nodes hold timeseries data taht is accessed infrequaltly and not noramlly updated. to  save space you can keep full mounted indices of seracable snapshots on the cold tier. These fully mounted iindices elimated the need  for replicas, reducing required disk space by approximately 50% compared to the regular indices.
+
+4) Frozen Phase(data_frozen): Read only index.  Querying is excepted to be rare or very infrequent and sluggish.
+		-> nodes hold time series that is access rarely and never updated. the frozen tier stores partially mounted indices of serachbale snapshots. this extends the stroage capcity even further by up to 20 times compared to the warm tier.
+		
+
+5) Delete: Final stage index is deleted permanently.
+
+6)Content tier :- nodes handle the indexing and query load for content such as a podcut catalog. 
+		-> Data stored in the content tier is generally a collection of items such as a product catalog or article archive.
+		-> Content data typically has long data retention requirements, and you want to be able to retreive items quicky regardless of how old they are
+		->This tier is specicifcally optimized for the storing and searching full-text data, such as logs or documnets. It balances the need for fast search capabilites with the efficeint usefull for workloads where the data is mostly static but still needs to be searchbale.
+
+############### data stream and indices differnce ###################
+
+data streams :- datastreams let you stored append only time series data accross multiple indices while giving you a single named resources for requests.
+
+-> The Elasticsearch data stream is an abstraction layer between the names used by applications to facilitateingestion and search operations on data and on the underlying indices used by Elasticsaerch to store that data. Data  streams let you store append onnly time series data across multiple indices while providing you with a single names resource for requests.
+	They must contain @timestamp 
+	Note :- data streams stored in indices	
+			.ds-<data-stream-name>-<yyyy.mm.dd>-generation-number>
+			
+	when rollovers are happen in data streams then the data streams will created .order.logs.25-07-2021 is orginal .order.logs.25-07-2021.1
+### Sharding ####
+-> large information or data into small peices of data into mutiple differnt systems or instance  these peices of data is known as shards. the process is called sharding.
+		
+######### Shards ###########
+
+Shards are the software coomponents holiding data, creating the supported data structures(Like inverted index), managing queries and analysis the  data in elasticsearch. 
+	-> The shards are distributed across the cluster for availabality and failover. On the other hand replicas allow reduncadancy in the system.
+	-> Once an index is in operation the reallocation of shards cannot be carried thorugh as the invalidates the exsiting data in an index.
+	
+#### Cluster and A Node ###
+Cluster is a collection of nodes.A node is an instance of an  elasticsearch server. When we start an elasticsearch server on out machine for example we are essentailly creating a node. This node will join a cluster by default. The cluster as it has just this node is called a single node cluster.
+
+		-> Red :- All shards are not yet assigned cluster stauts is RED.  Not all shards are assigned and ready (cluster being preapred state). Not all the data is available for querying. This usally happens when teh cluster is starting up, during which time the shards are in a trasient state.
+		
+		-> Yellow :- All shards are ready but replicas  are not yet assiged. cluster status ins  yellow. Shards are assigned and ready but replicas aren't assigned ans ready. This would be more likely to occure when nodes hosting the replicas may bave crashed or aare justing coming up.
+		
+		-> Green :- Shards and replicas are all assignned ans ready.
+		
+Note Clsuter Health :-  GET _cluster/health  -> this end point fetches the clusters deatils , especially the ckuster name, status of the cluster  number of shards replicas annd other,
+
+### Shard sizing ####
+-> The industry best pratice is to size an individulas shard with no more than 50 GB. 
+-> advice is to host up to 20 shards per GB of heap meomory. 
+->BY default elasticsearch is instantaited with 1 GB memory but the setting can be changed by editing the JVM.options. where Xms and Xmx
+-> When we create an index elasticsearch associates a single shard and a single replica by default to it (before version 7 the defualt was 5 shards and 1 replics.)
+
+shards_number = hash(document_id)%number_of _primary_shards
+
+#### NODES and CLuster ###
+-> Each node hosts a set of shards and replicas. The index a logical collection to hold our data is created across these shards  and replicas.
+-> the default cluster name for out of the box server is elaticsearch.
+
+Shards memory: 3 ✕ 50 GB/shard = 150 GB 
+Replicas memory/per shard: 15 ✕ 50 GB/replica = 750 GB/per shard
+(Replicas memory for 3 shards = 3 x 750 GB = 2250 GB)
+Total memory for both shards and replicas on a given node = 150GB + 750GB = 900 GB
+(Grand total for 20 nodes = 18 TB
+
+## NODE ROLES ###
+Master node :- its primary responsibility is cluster managenment. A master node is invovlve in high-level operations such as creating and deleting indexes, node operations and other admin-related jobs for cluster management.
+Data Node :- Responsible for documnet persistence and reteieval. A data node is where the actual indexing searching deleting and other documnet realted operation happen. they are data _hot , data_cold, data_warm, data_frozen.
+Ingest node :- Resposible for the tranformation of data via pipeline ingestion before indexing
+Machine leanring node:- Handles machine leanring jobs and requests. as the name indicates executes ML alogorithms and detects anomalies. It is part  of a commerical license, so you must purchase an X- Pack licence to enable machine leanring capabilites.
+Transform node :- Handle tranfromation requets. The tranfomr node role is the latest addtion to the list. It used for the aggregate summary of data. this node is requires for carrying out tranfomr API invocations, which would create new indexes that are pivotes based  on the existing indexes.
+
+Coordination node :- This role is the default role. it takes care of incoming client requets. It essentially acts as work manager distributing the incoming request to appropriate nodes and responding back to the client.
+
+Note  :- the node is by default set with master data ingest roles (and fo course each node is by default coordinatior ther is no specails  falg to enable or diable a coordinator).   Remeber we mentioned the coordinator role is the default role provide to all nodes.althought we set up four roles in the example( master,data.ingest, and Ml), this node still inherits a coordinator role.
+
+#### Normalization ######
+Normalization helps build a rich user experince by creating additional data around the tokens. It is a process of reducing stemming these tokens to root words or creating synonyms for the tokens .
+		-> Normalization can also help bulid a list of synonyms for the token s again enriching the user search experience.
+		
+
+
+##### Coordinator node ###########################################################
+
+-> A coordinator node also know as a client node is a node that doesn't hold any data or perform any computations. its primary role  is to route search and indexing requests from cilents to appropriate data nodes and then aggregate the responses. 
+
+	-> Adding coordinator nodes to your elasticsearch or opensearch  cluster can be a strategic move to improve the perfomance and efficiency of your cluster. Coordinator nodes also know as client nodes are essentailly elasticsearch or openserach nodes that dont  hold any data or perform any computations. 
+	-> Their primary role is to route search and indexing requets from clients to the approriate data nodes and then aggreagte the responses.
+	-> Every node is Implicitly a coordinating node. This means that a node that has explicit empty list or roles via node.roles will only act as a coordianting node, which cannot be disbaled as a result such a node needs to have enough memeory snd CPU in order to deal with the gather phase.
+	
+		1) High Quwey Load
+		2) Complex Aggregations
+		3)Large numbe rof indices or shards
+		4) High client Connetion Count
+		5) Hybrid Cloud or Multi-Region Deployment
+=> When should I consider adding Coordinator nodes to my cluster?
+		-> you should  consider adding coordinator nodes if your cluster is experiencing a high query load if your cluster has a large number of indices or shards, If you have a large number of clients connecting to your cluster, or if you are running a hybrid cloud or multi-region deployment.
+		
+=> How can coordinator nodes improve the performance of my cluster ?
+		->Coordinator nodes can improve perfomance by offlaoding the task of routing requets and aggregating responses from the data nodes. This allows the data nodes to focus on executing queries which can lead to faster response times.
+==> What resources do coordinator nodes requires?
+		-> Coordinator nodes require lower DISK, CPU, and RAM than data nodes.
+==>after how many nodes should i consider adding coordinator nodes to my elasticssearch or Opensearch cluster?
+		-> The descison to add coordinator node is not striclty based on the number of nodes in your cluster. Its more about the cluster. If  your cluster is experience high query load, complex aggreations, a large number of indices or shards, or a high client connection count, then adding coordinator nodes can be benefical. However as a general guideline, you might start considering adding coordinator nodes when your cluster grows beyond  10 -20 nodes. Remmember its important to monitor your cluster Performance and make adjustment as necessary.
+
+#### STOP WOrds ###
+Stop words the words asuch as "the","a",'it','for', 'and','but','an' et are called stop words and are removed by using a stop filter plugin. However the deafukt standard analzer doesn't have the stop words parameter anbaled( the stop words filter is set ot _none by default) so you wold see words analyzed.
+
+PUT index_with_stopwords
+{
+ "settings": {
+ "analysis": {
+ "analyzer": {
+ "standard_with_stopwords_enabled": {
+ "type": "standard",
+ "stopwords": "_english_"
+ }
+ }
+ }
+ }
+}
+
+###### Routing Algoritham ####
+How shards are allocatng in the elasticsearch node and how will retive data?
+-> Elasticsearch uses a routing alogorithm to distirbute the document to the underlying shard when indexing. Routing is a process of allocating a home for a document to certain shard with each of the documents stored into one and only one primary shard. Retrieving the same document will be eacy too as the same routing function will be employed to find out the shard where that document belongs to.
+shard_number =hash(id) % numbers_of _shards
+ 
+### Repliacs can be alterd on an operational Index ### 
+-> while the shard number cannot be changed whne the index is in operation. we can alter the number of replicas should we wish to. Remember the routing function is a function of the number of primary shards not the replicas. Howeaver if we need to change the shard nuber for whatever the reaosn, we must close the indices (close indiceis will be bloacking all the read and write operations change the shard number and reopen the index.
+
+## Document API  INDEXING THE DATA INTO ELASTICSEARCH  ##
+
+=> HTTP Method
+-><HTTP_Method><server:port>/<INDEX_Name>/_doc/<DOC_ID> { #Body of the request }
+		* an Http action such as PUT/GET/POST
+		*Severs Hostname and port 
+		*Index name
+		*A document API endpoint(_doc)
+		*A document ID
+		*Arequest Body 
+	-> Example :- PUT books/_doc/1 #A The books is the index and document’s ID is 1
+{ #B The body of the request consists of JSON data
+ "title":"Effective Java",
+ "author":"Joshua Bloch",
+ "release_date":"2001-06-01",
+ "amazon_rating":4.7,
+ "best_seller":true,
+ "prices": {
+ "usd":9.95,
+ "gbp":7.95,
+ "eur":8.95
+ }
+}
+
+=> Using cURL :-
+curl -XPUT "http://localhost:9200/books/_doc/1" -H 'Content-Type: application/json' -d' #A The books is the index and document’s ID is 1
+{ #B The body of the request consists of JSON data
+ "title":"Effective Java",
+ "author":"Joshua Bloch",
+ "release_date":"2001-06-01",
+ "amazon_rating":4.7,
+ "best_seller":true,
+ "prices": {
+ "usd":9.95,
+ "gbp":7.95,
+ "eur":8.95
+ }
+}
+	
+### COunting all documents using _count API ####
+GET books/_count # Counting the number if books
+GET books,movice/_count # fetching the number of all documnets from mutiple  indices. Note :- if we didn't create the index then system will throw an index_not_found_exception.
+### DSL queires #### Elasticsearch provides a domain specific language DSL for writing queries commonly called Query DSL its simple JSON based  query writing lannguage 
+
+GET books/_search { "query" : {"ids":{"values": [1,2,3]}}}
+GET books/_search # Retreieving all documents in one go from the books index.
+GET books/_search { "query": {"match_all":{}}} #
+Get book/_search { "query" : { "match" : {"author": "Joshnu"}}}
+########
+Get books/_search { "query":{"match": {"authoe": #A The author field is  now having inner properties{ "query": { "operator"}}}
+
+#Searching across multiple filed using multi_match query
+Get books/_search {"query" : {"multi_match":{#A Multi match query that searches across multiple fileds "query" : "JAVA" , "fields" : ["titele,"sysnopisis"] }}}
+
+## Relevanacy Scores ###
+-> _score attribute ttached to the indivisual result. The _score is a positive floating nuber indicatinig how relevant resultant docuent is to the query. 
+		-> the fifrst dcoument returned had the highest score while the last one scored the least. this is the relavancy score a score that indicates how well the docunets matched the query. The higher the score the greater the match.
+		-> Elasticsearch has an algorithm called Okapi Best Match 25 (BM25) which is an enahnced term Frequency/Inverse Document Frequency Frequency similarity alogorithm that calucaltes the relavcnay scores for each of the results and sorts them in that order when presenting those the client.
+## A multi_match query that boosts a fields immportance 
+GET books/_search {"query" : "ulti_match": {"query" : "JAVA", "feilds" : ["title^3", "synopsis"] # Caret followed by the boost number }}
+
+## SEARCH PHASE ##
+GET books/_search {"query": {"multi_phrase" : {"synopsis" : "must-have book for every JAVA Programmer " #our phrase}}}
+## Match phrase query with highlights 
+GET books/_search { "query": {"match_phrase": {"synopsis": "must-have book for every java programer"}}, "highlights" : { "feilds : {"synopsis" : {}}}} ## in the  hightlight object we can set the feilds that we w ish to get the highlight applied to . 
+
+#### Matching a phrase with issing words (using slop)
+GET book/_search { "query" : {"match_phrase" : { "synopsis" : {"query" : "must-have book every JAVA programmer", "slop" : 1 #B the slop is set to 1, indcicating one word is missing}}}}
+
+### Matching Phrases with a PREFIX  Query to fetch all books with a title having "Java CO"
+GET books/_search {"query":{"match_phrase_prefix":{"title":"JAVA CO" #THis query will search for all books that a title like JAVA concurrency, java collections , java computing  }}}
+
+## FuZZY Queries
+GET books/_search {"query":{"fuzzy":{#A Fuzzy query to support spelling mistakes "title":{"value": "kava",#B THe incorrectly spelt criteria  "fuzziness":1 #c Fuzziness  1 indicates one letter forgivenss }}}
+
+		-> FUZZiness and levenshteins's distance  :- fuzzy query searchs for ters that are similar to the query by employing sommething called levenshtein's edit distance.
+## Difernce bwtween the term query and match query ##
+->  To better search text feids the match query also  analyzes your provided search term before perforing s search. This means the match query can search text fields for analyzed tokens rather than an exact term. The term query deos not analyze the search term. The term query only search for the exact term you provide.
+
+	-> Field type :- The match query is used for full text search while the term query is used for exact search on feilds that are not analyzed or analyzed in specific way.
+	-> Performance : the term query is used for full -text search while the term query is used for exact search on feilds that are  not analyzed or analyzed in a specific way.
+###### TERM - LEVEL queires ###
+ -> A term query is used to fetch matches for a vallue rpovided in the search critetia. 
+ GET books/_search { "_source" : ["titel","edition"], "query": {"term" : {# Deaclare the query as a term level query "edition": {#Provide the feild and the values as search criteria "value":3}}}}
+### THE  RANGE QUERY 
+GET books/_search { "query" : { "range" # Range query declartaion : { "amazon_rating" #Mention the range to match  : { "gte" # Greater than ot  equal to : 4.5, "lte" Les or equal to : 5 }}}
+####
+###
+
+----------------
+### Compound queires ###
+-> compound queires in elasticsearch  provide us with a mechanism to create sophishicated search queires. Compound queries combine indivisual queires called leaf queries.
+
+		1)Boolean(bool) query,
+		2) Constant score(constant_score) query
+		3) Function (function_score) Score,
+		4)Boosting (bossting) query
+		5) Disjunction max (dis_max)query
+		
+	-> Boolean(bool) query :- a bool query expects the search to be built using a set of four clauses must, must_not, should and filter.
+	Get books/_search { "query" : { "bool" #Abool query is a combination of conditaional boolean clasuses: { "must" #The criteria must match with the documents: [{}], "must_not"# the criteria must not match (no score contribution):[{}], should # The query should match, it is  not mandatory that criteria  defined in the should clause is expected to match.   : [{}], filter #The query must match (no score contribuation) :[{}]} }}
+	
+### The bool query with a must clasue for matching 
+GET books/_search { "query": {"bool" : {"must" : [{ "match": {"author": "joshu Bloch"}}]}}}
+
+## Must clasuse with multiple leaf queries
+GET book/_search {"query": {"bool":{"must": [{"match": {"author":"joshnu bloch"}}, {"match_phrase"#A second qeyr searching for phrase: {"synopsis": "best Java programming books"}}]}}}
+## A bool Query with  must and must not clauses in action 
+GET books/_search {"query":{"bool": {"must":[{match : {"author":"joshua"}}],
+"must_not": [{"range": {"amazon_rating": {"ltr":4.7}}}]}}}
+
+### Should clause
+-> the should caluse behaves like an OR operator.  A should query increase the relevancy score when a match is found
+GET books/_search {"query": {"bool":{
+"must":[{"match}: {"author":"joshua"}],
+"must_not":[{"range":{"amzon_rating":{"lt":4.7}}],
+"should":[{"match":{"tags":"software"}}]}}}
+
+
+#####  Aggregations ###
+-> Analytics enables organization to find insights  Aggregations fall  into three categories
+	1)Metric aggregations :  simple aggreations like sum,min,max,and average fall into this category of aggreations. they rpovide aggreate value acrocss set of document data.
+	2) Bucket aggreations :-  Bucket aggreations help collect data into buckets, segregated by intervals like days,age groups etc. these help us build histograms,  piecharts and other visulizations.
+	3)Pipeline aggreations :- Pipeline aggreations work  on the output from the other aggregations.
+Note:- similar to the endpoint used for searching we use _search endppopint for aggreagtions too. however we used new object called aggs
+
+	1) Metrics :- what is the avergae height of the students across a class?, what the minimum hedge trade?  what the gross earing of a movie ?
+	
+## Fetching the total number off critical patients 
+GET covid/_search {"aggs"#Writinng an aggregation query:{"critical_patients": {"sum": {"feild": "critical"#the field on which the aggregation is applied }}}}  ## As the response indicates the sum total of all the critacal patients is returned under our reports
+
+## aggreation MAX metric
+GET covid/_search {"size": 0,"aggs":{"max_deaths": {"max":{"feilds"}:"deaths"}}} ## similar we have min, avg 
+
+## All cores statistics in one go using stats metric
+-> This stats query returns in one go sum ,count, average, maximum, minimum.
+GET covid/_search {"size"=0,"aggs": {"all_stats"#new feilds where the response values need to store:{"stats"a stats query return all fice core metrics in one go:{"field":"deaths"}}}}
+		-> if you are curious swap the stats query with an extended_stats and check the result. a lot more stats like variance, standard deviation and other.
+		
+### Bucketing 
+-> Bucketing is all about segregarting data into various groups or called buckets. fro example we can add these groups to our buckets a survey of adult group according to their age bucket(20-31-40, 41-50) movies according to the review rating or number of new housrs contructed per month etc.
+			1) #### Histogram buckets: 
+			Get covid.search {"size":0, "aggs": {"critial_patients_as Histogram"#The user-defined name of the report:{"historgam"The type of bucketing aggreation historgram:{"field": "critical",interval: 2500 }#The bucket interval for evry 2500 documnet count will give} }}
+		### 2) Ranage Buckets ##
+		GET covid/_search {"sixe":0,"aggrs":{"range_countires"# A the rnage buckeing aggreation: {"range": {"field":"deaths", "ranges": [ {ranges}:[{"to":6000}, {"from":"6000,"to":8000]}}}}
+### Revalancy ###
+-> Elasticsearch is a powerful search engine that good at full -text search among other types of queries. one of its key features is the ability to rank search results based on relevance.
+############# truncate  commands ##############################
+
+*/30 * * * * truncate -s 0 /var/log/kibana/kibana.log
+
+truncate -s 2G /var/log/kibana/kibana.log
+
+tcpdump  -s 0 -A host 10.11.208.92  and port 24224 -vv
+
+
+#### Services PORTS   ####
+
+Elastic search -> 9200,9300 -> 9200 is deafult Http port fro elatissearch 
+
+flunebit -> 
+fleunt d -> 
+
+
+
+garfana ->      3000
+filebeat ->     5044
+metric beat ->  5066
+Audit beat -> 5066
+Heart beat -> 5066
+
+Kibana ->       5601, 443(http web)
+Prommethus ->   9090
+kafka ->        9092 ,9093
+node exporter-> 9100
+Elasticsearch-> 9200(HTTP),9300 (transport node to node comunication)
+logstash ->     9600
+
+#### Beats ######
+File Beat :- Filebeat is designed to monitor  and collect log files from your servers and forward them to either elaticsearch or logstash.
+Hear beat :- Heart beat is a monitoring agnet used to check the avaiablitiy of service. ot performs uptime and status checks by pining services at regular intervals and reporting their availability to elaticsearch or logstash.
+Audit beat :- it is focused on collecting security audit data from the linux audit framework or monitoirng file integrity and system process 
+Metric beat :- Metric beat colelcts and ships system and service-level metircs to elaticseach or logstahs. ot provides a lightweight way to gather CPU, memory , disk, and other systemc mertrics.  
+Pakcetbeat :- Monitors network traffic and provides metrics like latency, errors, and response time
+Winlogbeat :-  Reads windows event logs
+Function beat :-  Reads and ships events from serverless infrasturcture
+osquery beat :- runs osquery and manages interaction with it.
+
+------------------------------------------------------- ES|QL ---------------------------------------------------------------------------------------
+#######  ES|QL -> ELasticsearch Query Language #####
+-> it is provides a powerfull way to filter tranform and analyze data stored in elasticsearch.
+-> The Elasticsearh query language makes use of pipes (|) to manipulate and tranfomr data in a step by step fashion. this approach users to compose a series of operations where the output of one operation becomes the input of  the next, enablinig complex data tranformation and analysis.
+	Note :- ES|QL is case-insensitive (example:- FROM sample_data , from sample_data) both the query was same
+	 if query is in mutiple lines and same lines both are same 
+-> Each ES|QL query starts with a source command. Asource command produce a table typically with data from elaticsearch.
+-> ES|QL lets you search , aggregate ,calculate tranform and vosulize all  from one window for imporved accruacy simplified data investigation and a unified query experince.
+
+----> ES|QL supports these SOURCE COMMANDS:
+				1)FROM : The FROM source command returns a table with data from a data stream, index, or alias.
+				2)ROW  : it is used to create a new row in the result set with specified values. it allows you to add custom data or static values to the output of query. The row command is used to insert a new row into the result set which can include static values or callcualted data.
+				Example : FROM sales | ROW 'Average sales', AVG(sales_amount) # This Example adds a row with a label 'Average Sales' and the avergae sales amount calculated from the sales_amount field 
+				3)SHOW : it is used in various context to display inffromation about different components or configurations. 
+-----> ES|QL  supports these processing commands 
+				1)Dissect : it enables you to extract structure data out of a string. ROW a = "2023-01-23T12:15:00.000Z - some text - 127.0.0.1" | 
+							DISSECT a """%{date} - %{msg} - %{ip}""" | 
+							KEEP date, msg, ip   #the output will like table feilds like date msg and Ip will segrigate. 
+							
+				2)DROP : DROP processing command removes one or more columns.
+				EXammple 1: FROM employees | DROP height
+				Example 2: FROM employees | DROP height*
+				3)ENRICH :
+				4)EVAL(Evaluation) : -> THe Eval processing command in ES|QL (ELasticsearch Query language) is used to  append new columns with calculated values to the results set of a query. It allows you to perform computations and tranformation on existing data within yout Elasticsearch indices.
+					-> EVAL primmarily used to perfrom calcualtions on existing fields and create new fields based on those calualtions
+					Example1 :- FROM employess | EVAL height_feet = height * 3.281   # This example converts a hegight fielld from meters to feet 	and stores in a new column heigt_feet.
+					Example 2:- FROM employess | EVAL full_name = CONCAT(first_name, '',last_name) # THis example concatenates first_name and last_name feilds into a new full_name feild.
+					NOTE: If the specified column already exists, the existing column will be dropped, and the new column will be appended to the table
+				5)GROK : Frok  enables you to extract structed  data out of string.
+				ROW a = "2023-01-23T12:15:00.000Z 127.0.0.1 some.email@foo.com 42" | GROK a """%{TIMESTAMP_ISO8601:date} %{IP:ip} %{EMAILADDRESS:email} %{NUMBER:num}""" | KEEP date, ip, email, num   ###
+				6)KEEP:  The KEEP processing command enables you to specify what columns are returned and the order in which they are returned.
+				Example: FROM employes  |  KEEP emp_no, first_name,lastname,height  #THe columns are returned in the specified order.
+				7)LIMIT
+				8)MV_EXPAND(preview)
+				9)RENAME
+				10)SORT
+				11)STATS
+				12)WHERE
+				
+## ADVANTAGES :- Faster queries, Simplified user experience, New search capabilites, QUicker insights, Accurate alering ,Do more with less.
+	source-command | processing-command | processing command 
+	
+	
+	
+-> FROM sample_data | LIMIT 3 #sample_data is index name , LIMIT command to limit the number of rows that are returned 
+-> FROM sample_data | SORT @timestampe DESC # SORT the data
+->FROM sample_data | WHERE event_duration > 50000 # WHERE command to query the data. to find all events with a duration longer than 5 msg
+->FROM sample_data | WHERE message LIKE 'Connected'  # LIKE to run a wildcard query 
+->KEEP 
+->DROP drop columns
+->ENRICH to enrich a table with data from indices in elasticsearch.
+-> DISSECT and GROK to process data
+
+	->Chain Processing commands :-  FROM sample_data | SORT @timestampe DESC | LIMIT 3
+##Compute values:- 
+		-> EVAL :- this command to append columns to a table with calucalated values.  for example the following query appends a duration_ms column. 
+			FROM sample_data | EVAL duration_ms=event_duration/100000.0  #the following query appends a duration_ms column. 
+		EVAl supports several function like ROUND
+			FROM sample_data | EVAL duration_ms =ROUND(event_duration/100000.0)  #ROUND a number to closte number with the specified 
+## Calculate statistics (STATS) :- ES|QL can not only be used to query your data you can also use it to aggreate your data.
+		FROM sample_data |STATS median_suration=MEDIAN(event_duration) 
+	you can calculate mutlpile stats with one command 
+		FROM sample_data | STATS median_duration = MEDIAN(event_duration),  max_suration = MAX(event_duration)
+	FROM sample_data | stats median_duration = MEDIAN(event_duration) BY client_ip # use BY to group calculated stats by one or more columns. we can group columns with reuired ones with solution column
+	
+## ACCESS COLUMNS :-  we can access columns by their name. if a anme contains special charcaters it need to be quoted with backlist(`)
+		NOTE:- if you don't provide a name the new column name is equal to the function expression.
+		FROM sample_data | EVAL event_duration/1000000.0 | STATS MEDIAN (`event_duration/1000000.0`)  #where in EVAl event_duartion/10000.0 is a column name  to access this column in STATS we are using backticks(`) so in above command in STATS we are used the coulmn name event_duartion which contain speacial charcaters.  
+## Identifiers :- identifiers need to  be quoted with backticks (`)
+
+## Literals  :- ES|QL currently supports numeric and string literals
+	-> String Literals :- A string literal is a sequence of unicode charcters delmited by double quotes (").
+		FROM index | WHERE frist_name == "Geogi"
+		Note :- if literal string itself contains quotes these need to be excaped (\\") or else supports triple-quotes (""") delimiter
+		ROW name = """Indian "Indy" Jones"""
+	->Numerical Literals :- it normally we can use
+## Comments :- ES|QL uses  C++ style comments 
+	->//query the employes index 
+		FROM employes | WHERE height >2 # double slash // for single line comments 
+	-> /* and */ for block comments
+## Timespan literals :- Datetime intervals and timespan can be expressed using timespan literlas.
+	-> millisecond/milliseconds/ms
+	->second/seconds/sec/s
+	-> minute/minutes/min
+	->day/days/d ->week/weeks/w -> months/month/mo -> quarter/quarters/q -> year/years/yr/year/years/yr/y
+		#1day  , 1     day ,   1             day    ### timespan literals are not whitespan senstive these expression are all vaild.
+		
+### ES|QL supports these 
+	A)source commands 
+		1)FROM   -> FROM employess |LIMIT 1000 -> FROM employess-0001,other-emplyess-*
+					FROM cluster_one:emplyess-00001,cluster_two:other-emplyes-*
+					FROM "this=that", ""this[that" ## to escapes index names that contain special charcaters.
+		2)ROW -> ROW a=1,b="two",c=null # THE ROW source command produce a row with one or more columns with values that you specify useful for testing.
+				ROW a=[2,1] #Square brackers to create multi-value columns
+				ROW a= ROUND(1.23,0) #it supports functions
+		3)SHOW ->SHOW source command retunrs infromation about the deploymnet and its capabilites.
+			SHOW info
+	B)Processing commands :- ES|QL processing command change an input table by adding removing or changing rows and columns.
+		DISSECT,DROP,ENRICH,EVAL,KEEP,LIMIT, MV_EXPAND, RENAME,SORT,STATS BY , WHERE.
+		
+## Create a histogram :- ES|QL enables you to create histogram using the BUCKET function.  BUcket Creates human-friendly bucket sizes and returns a value for each row that corresponds to the resulting bucket the row falls into.
+	Combine BUCKET with STATS BY 
+	-> FROM sample_data | STATS c=COUNT(*) BY bucket =BUCKET(@timestamp,24, "2023-10-23T00:00:00Z","2023-10-23T23:59:59Z")
+##Enrich data :- ES|QL enable you to enrich a table with data from indices in elasticsearch using the ENRICH command
+
+-----> EVAL
+		-> THe Eval processing command in ES|QL (ELasticsearch Query language) is used to  append new columns with calculated values to the results set of a query. It allows you to perform computations and tranformation on existing data within yout Elasticsearch indices.
+		-> EVAL primmarily used to perfrom calcualtions on existing fields and create new fields based on those calualtions
+		Example1 :- FROM employess | EVAL height_feet = height * 3.281   # This example converts a hegight fielld from meters to feet and stores in a new column heigt_feet.
+		Example 2:- FROM employess | EVAL full_name = CONCAT(first_name, '',last_name) # THis example concatenates first_name and last_name feilds into a new full_name feild.
+		
+		
+	
+#####
+ulimit -a
+
+JVEM options :-
+
+XMs :- minimum heap size  :- minumum heap size that the jvm allocates at startup
+Xmx :-  Maximum heap size 			
+
+	
+
+
+https://ela.st/ela-on-blr
+####CODEC #############
+In the context of Elastic technologies, a codec is a component used to encode or decode data as it is processed by Logstash or Beats. Codecs are essentially stream filters that can operate as part of an input or output, transforming the data format as it is ingested or emitted.Key Points about Codecs:
+	Purpose: Codecs are used to change the data representation of an event. They can be applied to both input and output stages in data processing pipelines.
+	Common Use Cases:Input Codecs: Decode incoming data into a format that can be processed by Logstash or Beats. For example, converting JSON or CSV formatted data into structured events.
+	Output Codecs: Encode data into a specific format before sending it to the destination. For example, formatting data as JSON for output to a file or a network socket.
+	Examples of Codecs:JSON Codec: Reads JSON formatted content and creates one event per element in a JSON array.CSV Codec: Parses CSV data and passes it along as structured events.
+	Plain Codec: Processes text data with no delimiters between events.Configuration: Codecs can be configured to customize their behavior. 
+	For example, the JSON codec can be configured to pretty-print JSON output or escape HTML characters.Example Configuration in Logstash:input {  file {    path => "/path/to/logfile"    codec => json  }}output {  stdout {    codec => rubydebug  }}In this example, the input file plugin uses the JSON codec to decode incoming log data, and the output is formatted using the Rubydebug codec for easy readability in the console.
+
+#### Elasticsearch 8 updates
+1) The  concept of document types is gone for good 
+2) Data streams are now mature
+3)Security enables by default and is tighter
+4)NLP via imported pytorch models
+5) Serverless log ingestion from  AWS to Elastic Clous
+6) ELastic Agents fro Azure and Cassandra
+7) Vector Similarity  /KNN search (Experimental)
+8)Machine Learning(Experimental)
+9) New Canvas Editor
+10) Maps/vector tile  support
+11)  New Kibana UI
+12) Enterprise search
+##### Elasticsearch 8 ####
+New Features & Enhancements
+Native NLP Support: Built-in natural language processing (NLP) for sentiment analysis, named entity recognition, etc.
+Approximate Nearest Neighbor (ANN) Search: Faster similarity searches using dense_vector.
+PyTorch Model Integration: Supports deploying ML models like BERT directly in Elasticsearch.
+Upgrade to Lucene 9: Improved performance, better search capabilities, and language support.
+Enhanced Logging: Logs now follow Elastic Common Schema (ECS) for consistency.
+Backward API Compatibility: Elasticsearch 8 supports version 7 REST API headers.
+##### The key updates from ELastic 8.15 to 8.17###
+
+1)Elasticsearch LogsDB Index mode: THis new mode dramatically reduces the storgae footprint of log data in elasticsearch  by up to 65% allowing for more efficient storgae and search capabilities.
+2) Elastic Rerank: Introduced as a new model for semantic reranking, Elastic Rerank can be used to imporve semantic relevance in search reults, Particulary beneficial for RAG Application().
+3)Pre-Configured Deafult ELSER ENndpoint:- This update removes the need for infernce configuration to use ELSER, simplifying the setup process for semantic text mapping.
+4)FUll -text search for ES|QL: The introduction of MATCH and QSTR functions in ED|QL provides full text serch functiionality making log searches easier andd more intuitve.
+5) Kubernetes infrasturcture with full OTel Suppoert: enahnce support for kubenertes infrasturcture allowing users to find core componestes like clusters, nodes and services more easily.
+6)Discover as Centeral Log Analytics Experience: Transition from logs Exploere to Discover for a More centralized and contextual experience.
+
+#########  logsdb Index mode ###################3
+
+The logsdb index mode is a feature in Elasticsearch designed to optimize the storage and retrieval of log data. It reduces the storage footprint of log data by up to 65% compared to previous versions of Elasticsearch without logsdb. This is achieved through several technical innovations:
+
+	1)Synthetic _source: This feature allows Elasticsearch to reconstruct the original _source field on demand, rather than storing it, which significantly reduces storage requirements.
+	2)Smart Index Sorting: By default, logsdb sorts indices by fields like host.name and @timestamp, which improves storage efficiency and reduces query latency.
+	3)Advanced Compression: Logsdb uses advanced compression techniques, such as Zstandard compression, delta encoding, and run-length encoding, to further reduce storage needs.
+	4)Routing Optimizations: These optimizations use sort fields to route documents to shards, which can reduce storage requirements by an additional 20%.
+	5)Specialized Codecs: Logsdb applies specialized codecs for numeric doc values to optimize storage usage.
+Logsdb is available in Elastic Cloud Hosted and self-managed Elasticsearch starting from version 8.17 and is enabled by default for logs in Elastic Cloud Serverless. It is particularly beneficial for observability and security teams as it allows for the retention of more data without exceeding budget constraints, while keeping all data immediately accessible for analysis.
+
+NOTE :-	 The index template priority. By default, Elasticsearch ships with a logs-*-* index template with a priority of 100. To make sure your index template takes priority over the default logs-*-* template, set its priority to a number higher than 100. For more information, see Avoid index pattern collisions.
+
+
+
+
+#### Integration with others tools###
+
+##### SQL to Elasticsearch integration #########
+
+Step 1: Install Logstash Download and Install Logstash:
+
+Step 2: 
+	a)Configure LogstashCreate a Logstash Configuration File:Create a new file, e.g., sql_to_elasticsearch.conf.
+	b)Configure the JDBC Input Plugin:
+		This plugin will connect to your SQL database and fetch the data.Example configuration:
+		input {  jdbc
+			{    jdbc_connection_string => 
+				"jdbc:mysql://localhost:3306/mydatabase" 
+				jdbc_user => "your_username"   
+				jdbc_password => "your_password"    
+					jdbc_driver_class => "com.mysql.cj.jdbc.Driver"  
+					jdbc_driver_library => "/path/to/mysql-connector-java.jar"   
+					statement => "SELECT * FROM your_table"  
+			}
+			}
+	c)Configure the Elasticsearch Output Plugin:This plugin will send the data to Elasticsearch.Example configuration:
+	output {  elasticsearch {    hosts => ["http://localhost:9200"]    index => "your_index_name"  }}
+
+Step 3: Download JDBC Driver
+	a)Download the JDBC Driver: For MySQL, download the MySQL Connector/J from the MySQL website(external, opens in a new tab or window).
+		Place the JAR file in a directory accessible by Logstash.
+Step 4: Run Logstash:
+	a)Execute Logstash with the Configuration File:Open a terminal or command prompt.Navigate to the Logstash installation directory.Run the following command:bin/logstash -f /path/to/sql_to_elasticsearch.conf
+	
+Step 5: Verify Data in Elasticsearch
+	Check Elasticsearch for Indexed Data:Use Kibana or a tool like curl to verify that the data has been indexed.
+	Example curl command:
+	curl -X GET "localhost:9200/your_index_name/_search?pretty"
+
+### RE-ranking ####
+-> Many search systems are built on multi -stgae retrieval pipelines. Eariler stages use cheap ,fast alogorithms to find a broad set of possible matches.
+-> Later stages use more poerful models, often machine learning -based to reorder the documents. this step is called re-ranking. Because the resource -intenive model is only applied to the smaller set of pre-filterd results.
+	-> Elastic re-ranking is a technique that enhance serach relevance by applying a more sophisticated ranking model, such as a machine learning based ranker, to re-rank the top -k reults retrievedd from an initail search query in Elasticsearch.
+	
