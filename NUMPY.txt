@@ -1,0 +1,393 @@
+==> NUMPY  :- numeric python , numpy perfomrs array -oreineted computing, 
+
+	import numpy as np  # to import numpy 
+	my_arr1= np.array([1,2,3,4,5])
+	my_arr1= np.array([1,2,3,4,5],[2,3,5,3,2])
+	my_arr1.shape #it will give the shape of array
+	
+	with help of numpy we can add the arrays directly with out write array logic 
+		my1 =np.array([1,2,3,4,5]) , my2=np.array([6,7,8,9,10])
+		my3 = my1+my2
+		my4 =my1-my2
+		my5=my1*m2 ,my6=my1/my2
+		
+---------- Numpy Vs Python -----  
+Numpy arrays and python lists are both used to store collections of data but they have some fundamental differnce n terms of functionality, performance and meory usage. 
+		-> When we write program without using the numpy library to exectue the program it will take more time  but if we use the numpyt library it will exceute in less time compare to without using numpy library program. 
+
+->np.arange():  it is a function in Numpy to create an array with regulary spaced values within a specified range.  arr =np.arange(10)  print(arr)   #output :[0,1,2,3,4,5,6,7,8,9]
+	new=np.arrange(4,10) print(new)  #output [4,5,6,7,8,9]
+
+->Numy Array (ndarrys): Numpy arrays or ndarrya are the primary data structures used in numpy. THey are homogenous collection of elements with fixed.
+	->1D arrays: 1D arrays are like traditionaly arrays or lists
+		arr_1d=np.array([1,2,3,4,5])  
+		print(arr_1d) #output:[1 2 3 4 5]
+		print(arr_1d[0]) #output:1
+	->2D array :
+		arr_2d =np.arry([1,2,3],[4,5,6],[7,8,9])
+	-> Properties of N-deminons arrays
+		1)Shape: the shape of ndarrya describes the size of each dimnetion of the array.  it it represented as tuple of intergers indciating the number of elments along each dimnesion
+		print(arr_2d.shape) #output: (2,3)
+		
+		2)Data Type (dtype): The data type of an array ndarry specific the type of elements stored in the array.
+		arr_1=np.array([1.1,2.2,3.3], dtype=np.float32)
+		
+		3)Size:- the size of the ndarrya is the total number of elements in the arrya. it is equal to the product of the dimensiions of the array.
+		
+		arr_3d=np.zeros((2,3,4)) #zeros of meanis which will genernated whole zeros.
+		print(arr_3d.size) #output: 24
+		
+		4)BNumber of the dimensions (ndim): THe ndim attribute of an ndarrya specifiex the number of dimnsions or axes of the array. 
+		arra_4d =np.ones((2,3,4,5))  # where it indicated 4 dimensionals 
+		#ones of which will generate all ones in 4 dimensionslly 
+		print(ndim) #output ndim so number of dimensions  4 
+		
+	Note :- we can create N numbers of dimensions with help of Numpy.
+
+---------Numpy Data Types and precision -----
+-> Numpy provides a variety of data types to repsrest differnets kinds of numerical data.  These data types are important for controalling memory usage and ensuring data integrity in numerical computations.
+	Command NUmpy data types :- INT , Float ,bool, coomplex, uint.
+	arr_1=np.array([1,2,3],dtype=np.int32)
+	arr_2=np.array([1.1,2.2,3.3],dtype=np.float64)
+	
+	Precision: Precision refers to the level of details and accuracy with numerical values are reprented.
+	Impact of precision on memory usage:
+	arr_1=np.array([1.1,2.2,3.3],dtype=np.float32)  #it will take lest bytes 
+    arr_1=np.array([1.1,2.2,3.3],dtype=np.float64) it will take more bytes it will store accurate values.
+	
+-----np.zeros, np.ones,np.full -------
+->np.zeros creates an array filled with zeros. it take the shape of the desired array as input and returns an array of hte sape filled iwth zeros.
+	arraY_zero =np.zeros(2,3)
+->np.ones
+->np.full -> it creates an array filled with a specified constant value.
+	array_full =np.full((2,3),5)
+	print(full_array)
+
+-----Arrya Opeartions - Numpy ----
+1) Arithmetic Operations :- 
+	arr_sum =np.add([1,2,3].[4,5,6])   
+	print(arr_sum) #it will add  the two matrix
+	arr_diff =np.subtract([5,6,7],[1,2,3])
+	arr_prod =np.multiply([3,4,5],[2,3,4])
+	arr_divide =np.divide([10,12,14],[2,3,4])
+	arr_mod =np.mod([10,11,12],[3,4,5])  #remianider will get the output.
+	arr_pow =np.power([2,3,4],[2,3,4])
+	
+Note:- we can add more accoridng to the reqirments
+
+2) Relational Operations :- 
+	arr1=np.array([1,2,3,4])
+	arr2.np.array([2,2,4,3])
+	print(arr1==arr2)
+	print(arr1!=arr2)
+	print(arr1>arr2)
+	print(arr1>=arr2)
+	print(arr1<arr2)
+	print(arr1<=arr2)
+	
+------Indexing and slicing for 1D arrays ---
+1) Indexing: 
+	arr =np.array([1,2,3,4,5])
+	print(arr[0]) #1
+	print(arr[1]) #2
+	print(arr(-1)) #5
+2)Slicing:
+	print(arr[1:3]) # [2 3]
+	print(arr[0:4:2]) #[1 3]
+3)Negative Indexing :
+	print(arr[-1])
+4)Slicing with Omitted Indices:
+	print(arr[:3]) #[1 2 3] #  SLice elments from the beginig to index 3
+	print(arr[2:]) #3,4,5 #  Slice elements from index 2 to the end
+	print(arr[::2]) #[1 3 5] #Slice elemnts with step size 2
+	
+----Indexing and slicing for 2 D Arrays  -----
+1)Indexing :-  arr =np.array([1,2,3],[4,5,6],[7,8,9,]))
+		print(arr[0,0]) #1  
+		print(arr[1,2]) #6
+2)Silcing :-
+	print(arr[0:2,1:3]) #Slice elements from rows  0 to  and columns 1  to 2 (exclusive)
+	
+3) Negative Indexing : 
+	print(arr(-3,-1)) #9
+4) Slicing with Omitted indices: arr =np.array(([1,2,3],[4,5,6],[7,8,9]))
+		print(arr[1:]) #[[4,5,6][7,8,9]]#slice  elements from rows  1 to the end and all columns 
+		print(arr[:,0:2:2]) # Slice elements from all  rows and columns 0 to 1(exclusive) with step size 2
+		
+-------- Mass Level Indexing and Slicing ####
+1) Boolean Indexing:-
+	arr=np.array([1,2,3,4,5])
+	mask =arr>3 #Boolean mask for elements greater than 3
+	selected =arr[mask] #use Boolean mask to select elements # by these the values which statify the  above condition those values will be in selected.
+	print(selected) #[4 5] 
+	
+2) Fancy Indexing: Fancy indexing allows you tu select  elemnts from an arrray using arrays of indices. you provide arrays of indices along each axis and the elements at those indices are returned as new array.
+	arr=np.array([1,2,3,4,5])
+	indices=[0,2,4] #  these 0,2,4 are indices
+	selected_elements =arr[indices]
+	print(selected_elements) #[1,3,5]
+
+-----------Playing with Arrays--------------
+1) Transposing Arrays:-  it is exchaning its rows and columns. In NUmpy you can transpose  an array  using the T attraibute or transpose() funciton.
+	arr1=np.array(([1,2,3][4,5,6]))
+    trasnposed_arr=arr1.T 	#[[1 4][2 5][3 6]]
+	trasposed_arr=arr1.transpose() #both are same
+2)Swapping Axes: Swapping axes  means rearranging the dimensions of an array. you can swap axes using the swapaxes() function
+	arr1=np.array([1,2,3],[4,5,6])
+	swapped_arr =arr1.swapaxes(0,1)
+	print(swapped_arr) #[[1 4][2 5][3 6]]
+	
+3)Pseudo-random Number Genration: Numpy provides various fucntons for generating pseudo-random numbers. These functions are lcoated in the numpy.random module.  you can generate random numbers from differnet distrubutions such as Uniform, normal, binomial, etc
+
+numpy.random
+	random_arr=np.random.randint(1,10,size=5) #[8,3,8,5,4] #Genrate 5 randome integers between 1 to 10
+	ranodm_arr=  np.random.normal(size=5) # Genrate 5 random numbers from a normal distribution
+
+	#pseudo-random number genration in 2D arrays:
+	random_arr=np.random.randint(1,10,size=(3,3)) # shap of arra(3,3)
+	
+	ran=np.random.randint(1,10,size=5)
+-------Operation on 2D arrays----
+1)Matrix Multiplication (np.matmul()): 
+	matrix1 =np.array([1,2],[3,4])
+	Matrix2 =np.array([5,6],[7,8])
+	result= np.matmul(matrix1, matrix2) #it will  mutlipy the two matrix and giv  enew matirx
+	print(result) #([19 22][43 50])
+	
+2)Reshaping (np.reshape()): Reshaping an array means changing the shape of the array without chaning its data. its useful for converting arrays between differnt dimentions or rearrannign theri layout.
+	arr=np.arrange(1,10)
+	print(arr)  #[1,2,3,4,5,6,7,8,9]
+	reshaped_arr =arr.reshape((3,3)) # reshape to 3X3 matrix
+	print(reshaped_arr)  #[[1 2 3][4 5 6][7 8 9]]
+3) Tranpose  (np.tranpose()) or .T:
+
+4) Aggregate Functions:- np.sum,  np.max(), np.min(), np.mean()
+
+------Universial  Functions-----
+1)Basic Arithmentic Operation : - np.add , np.multiply
+	arr1=np.array([1,2,3,4,5])\
+	result_add=np.add(arr,2)
+	print(result_add) #[3,4,5,6,7]
+	result_mul=np.multiply(arr,3)
+	print(result_mul) #[3,6,9,12,15]
+2)Trigonometric Fucntions:
+	angles=np.array([0,np.pi/4,np.pi/2,3*np.pi/4 , np.pi])
+	result_sin =np.sin(angles) #sine
+	result_cos =np.cos(angles) #Cosine
+3) Exponestional and Logarithmic FUcnitons:-
+	arr1 =np.array([1,2,3,4,5])
+	result_exp =np.exp(arr)
+	result_log= np.log(arr)
+4)Statistical Funtions:
+	result_mean=np.mean(arr1)
+	result_std=np.std(arr1)
+5)Comparison Functions:
+	arr1 =np.array([1,2,3,4,5])
+	arr2 =np.array([2,3,3,4,4,])
+	result_gt =np.greater(arr1,arr2) #[False False False False True]
+	result_lte =np.less_equal(arr1,arr2) # [True True True Treu False]
+6)Broadcasting:  Ufuncstions also support boradcasting which means they can operate on arrays of differnce shapes. NUmoy automatically broadcase arrays to percomr element-wise operations.
+	arr1=np.array([1,2,3][4,5,6])
+	result_broad=arr+2
+	print(result_broad) #[[3,4,5][6,7,8]]
+	
+---------- Array Manipulations-----
+1)Resize :- the resize changes the shape  and size in-place. THis method can convert any multi  dimentions and fill in with repeated copies
+
+2)ravel: it is mehtod returns a falttered one -dimnesional array.  Its convenient way to convert any multi-dimensional array into a flat 1D array.
+	print(b) # [[0 1 2 3][4 5 6 7][8 9 10 11]]
+	flat =b.ravel()
+	print(flat) # [0,1,2,3,4,5,6,7,8,9,10,11]
+3) Flatten : SImialr to ravel but  flatten returns a copy instead of view of the orignal data thus not affectiong the orignal array.
+-------SPLITTING and Joining-----
+1)np.split : splits an array into multiple sub arrays.
+	x = np.arrange(9)
+	x_split
+	
+2)np.hsplit and np.vsplit : these are specific cases of aplit for horizaontal and verstical splitting respctively. usefullfor 2D arrays
+3)np.concatenate : combining the arrays
+4)np.hstack and np.vstack: These are specific cases of concetante for horixaontial and vertical  stacking respectively  
+
+------ Adding and Removing ELaments ----
+1)np.append: add elaments to the send of the array
+2)np.insert: insetrts elemnts at a specif postion in the array
+3)np.delete
+4)
+
+
+
+
+
+
+
+
+
+########################## PANDAS ####################
+importing pandas :- import pandas as pd
+					import numpy as np 
+Pandas:- Pandas is afast powerful, Flexible and easy to use open source data analysis  and amnipulation tool built on top of the python programming languag. Pandas is a powerfull python library for data manipulation and analysis. it provides easy to use data structure and fucntion to work with structure data like tabular , time series or matric data.
+	->pandas primarlity provide two data structures: series any data type.
+	-> series:- a one-dimnesional labeld array capable of holding any data types.
+	-> Data Frame:- A two dimensional labled data structure with columns of potenstially different types.
+----------- Pnadas series -----	
+Pandas - Series:-  Series in pandasis fundamental data structure that represents one dimensional array of indexed data. It can hold any type of data integers, strings, floats, python objects etc. The series object is built on top of the Numpy arrya and is very similar to it but with additinal capabilites like handling missing data. The indices of pandas series are more flexible than thos in a simple Numpy array.
+
+-> Creating a series	
+	s=pd.series([1,3,5,6,9])
+	print (s)
+	Key attributes 
+		values:- The data in the Series.
+	    Index :- The index(lable) sof each data point
+------- Common Methodsof Series.
+s.describe() :Provide a quick summary of the data.
+	This method give a statistical summary of the series Including count, mean, standard deviation, minum, maximum and quartile values.
+	examples like :- count , mean, std, min,max  25%, 50%, 75% max . 
+	s=pd.series([1,3,5,7,9])
+	
+	s.mean() : Computes the mean of the data.
+	s.std() :- Computes the mean of the data
+	s.min() s.max()
+	
+--- Data Manipulation -----
+s.map(func):  Applies a function to each element in the series
+	doubbled =s.map(lambdax: x*2)
+	print(doubled) 
+s.apply(func):similar to map but more flexible(can be used Data Frames as well 
+	Note:-where as map is only for series)
+	squrt =s.apply(lambda x:x**0.5)
+s.sort_values(): sorts the series
+dropped =s.drop(0) # Dropping tghe first element 00 indicates index 
+
+--------Handling Missing Data in Pandas -------------
+s.isnull(): Checks for missing values returns a series of booleans. if in case any missing value in that place it will show true. if not mising it will show false.
+s.notnull(): opposite of isnull().
+s.fillna(value): fills missing values with sepcified value.
+		s=pd.series([1,2,np.nan,4,np.nan])#with np.nan it will show NaN it will fill where vlaues willl missing 
+		print(s)
+		filled=s.fillna(9)#in above there  missing value filled with Nan here with help of these we can fill the values with reuired one.
+		print(filled) 
+	s.dropna(): Drops all rows that contain missing values.
+	s_with_missing=pd.series([1,2,Non,4,5])#creating series with missing values
+	dropped_missing =s_with_missing.dropna() #dropping missing values. it will print only values which contains missing values like None it will  drop.
+	
+--------Indexing, Slicing and Filtering --------
+s.iloc[]:Purely integer location based indexing. 
+s.loc[]:Label based indexing
+	s=pd.series([10,20,30,40,50],index=['a','b','c','d','e'])
+	print(s.iloc[0]) #access the first elaments
+	print(s.iloc[1:3]) # Acces elemnets at positions 1 and 2 (exculde 3)
+	print(s.loc['a']) # access the element with index lable 'a'
+	print(s.loc['b':'c']) # Access elements with index 'b' and 'c'
+	
+--------------- Pandas Aggregation ------------
+s.sum():sums up the values.
+s.cumsum() : Cumulative sum 
+	(1,2,3,4,5) ->1,4,9,16,25
+s.aggregate(func): aggreagtes using one or more operations. 
+	aggrs=s.aggregate(['sum','mean','std'])
+------------Creating Data frame--------------
+#define data with contians both rows and columns
+dt ={'name':['Naveen','vignesh','nihar','mahesh'],
+		'role':['founder','mangner,'coummituy manger','devloper'],
+		'phonenumber':['9472','2243','342','2334'],
+		'email':['hbds','dsjnn','dkjbf','sdjb'],
+		'Address':['rfbkf','sdkfjsdf','sdkbfsdf','sdkbsd'],
+		'Blood Group': ['A+','b+','b','0+'] }
+		
+team_mass_coder_df =pd.DataFrame(dt)
+team_mass_coder_df.head() # Display data frame
+
+---------- Merging Data frames in Pandas ------
+roles={ 'name':['nihar','vignesh']
+		'role':['Founder','Manger']}
+roles_df =pd.DataFrame(roles)
+contact={'name':['NIhar','vignesh'], 'phone':['23','342'],'Email':['@gmail.com','vignesh.com']}
+contact_df =pd.DataFrame(contact_data)
+merged_df =pd.merge(roles_df,contact_df,on ='name') # Mergeing above  two tables with name column.
+
+---------- Importing Dataset --------------
+df=pd.read.csv('filmtv.csv')
+df.head(10)#diplaying top ten 
+df.tail(10) # displaying last ten 
+df.shape # it will give total number of rows and columns
+df.columns #lists all the column namesin the data frame
+df.types # display the data type of  each column
+df.describe() # summary statistics for numerical columns
+---- Accessing and filtering the data frame--------------
+titles =df.loc[:,'title'] #  selecting all rows and specifc column by label
+subset=df.loc[10:20,[''title','year','genre']] # selecting a range of rows and multiple columns by labels
+dramas =df.loc[df['genre']=='Drama']  # Conditional selction using a boolean array
+multiple_condition =df.loc[(df['genre']=='Drama') & df['avg_vote']] #Multiple conditon 
+Note:- df.iloc uses lables (name)for indexing df.iloc allows for integer-based indexing. you use df.iloc to access rows and columns by their (numbers)integer positions.
+
+single_row=df.iloc[0] #Selecting a single rowfrom the Dataframe
+#specfication=df.iloc[10,[2,3,4]] #selecting a specific row and columns by integer indices. # row at index 10 and columns at indices 1,2,3
+multi_slice=df.iloc[10:15,0:4] #slicing t getmuitlple rows and columns slicing  
+
+Note:- df.at : it is designed to access a  single value for a row/column lable pair.  it is very similar to df.loc fro accessing saclar values but iis optimizedfor faster accesswhen you only need to get or set a single value in a Dataframe.
+
+----- Filtering Based on criteria ----
+	Filtering data based on specifc criteria is a common operation in data analyisis. Pandas provides several methods to peform these operations often using boolen indexing.
+	
+	recent_movie =df[df['year']>2010] # filter movies released after 2010
+	Highly_reated_thirller =df[(df['public_vote']>=8) &(df['genre']=='Thriller')]
+	
+----Updating Rows and colums with pandas ----
+df.drop: drop() method in pandas is ues to remove rows  and columns from a Dataframe. its primary purpose is to drop sepcified lables from rows or columns.
+parameter :- labels: The row ro columns lables to drop
+			axis :  specifiec whether the lables refer to rows()axix=0) or columns (axix=1). note byt default its 0(rows)
+			Indec or columns : An alternative way to specify the labels to drop instead of using the lables parameter. it is quivalent to specifying axis =0 (for index) or axix =1(for columns)
+			inplace: If True the operation is done in place meaning it modifies the Datarame direclty and returns None. If False or not specified it reutrns a new DataFrame with the specified labels dropped.
+			df.drop(lables='title',axis=1)  # in these for view the if droping the columns  how it will be 
+			df.drop(labels='title',axix=1,inplace=True) #here it will drop from orginal data. it modifies the dataFrame 
+df.at[0,'year']=1983  # changes the year of the direct movie to 1983
+df['new_column'] ='pushpa' # Adds a new column with all entries set to default value all the values will be come pushpa
+
+using loc for conditional updates:- loc can be used update rows and columns based on a condition.
+df.loc[df['year']<2000,'classic']=True # Marks Movies before 2000 as calssic  
+df.loc[df['avg_vote']>6,['top_rated','must_wathch']]=[True, True] #Modifying multiple columns using loc.
+
+Using Apply Function :-  The apply function allows to apply a function along an axix of the DataFrame.
+df['lenght_category']=df['duration'].apply(lambda x: 'Long'if x>120 else 'short') # creating new columns which will give long and short 
+
+Updating Using Map or replace :- you can update a column based on a mapping dictionary or replace values.
+df['genre'].map({'Drama':'Drama Film','comedy':'comedy Film'}) # mapping Exsiting values to new ones we can updatedd the values with this one
+--- what is diffenrce between map and apply-----
+
+Using assign to create columns : assign helps you add new columns to a DataFrame in a FUnctional style.
+
+---Changing the name of Index ----
+Pandas allows you to rename the index of a DataFrame or series, which can help in making the index more informative or aligning it wiht new data reuiements.
+df.index.names=['movies_id' # Renams the index name ]
+df.rename(columns={'year':'release_year','title':'movie_title'},inplace=True)  # Renaming column names 
+
+---Display options-----
+pd.set_option('dispkay.max_rows',7) # set maximum number of rows and columns to  dipslay 
+pd.reset_option('display') #  reset options
+----Grouping Data in pandas-----
+Grouping data is a powerful way to perfomr segment-wise analysis and break dwon the dataset into chunks based on some criteria.
+genre_groups=df.groupby('genre') # Greoups the data by the genre column
+----- Aggreagtiion --------
+after groupinng you might want to perfomr aggreation operations like sum ,mean ,count  etc to summerize the data.
+avg_duration_by_genre=df.groupby('genre')['duration'].mean(0  # avergae duration per genre  
+stats _bygenre =df.groupby('genre')['avg_vote].agg([np.mean,np.std,np.min,np.max])
+
+complex_aggreation =df.groupby('genre').agg({ 'duration':np.mean, 'avg_vote':[np.min,no.max], 'public_vote':'sum'})  # Differnct aggreations for differcnt columns  
+
+Aggreagting without grouping : sometimes you may want to perform aggreations without the need to group  the data.
+overall_stats=df[['duration','avg_vote']].describe()
+df.count(): This Method returns the number of non-null values in each DataFrame colums it can be used to cound the number of non-null values in each column indivisully . 
+
+df.values_counts():- This method returns the frequency conts of unique values in a series.  it is typically used on a single column of the DataFrame and is useful for analyzing the distibution of values within that column.
+df['movie_title'].values_counts() # value counts it will give each movei title counts .
+------Custom aggreation Fucntions :-  Pandas allows you to define and use custom aggreation fucntion for more specific data analyssis needs.
+
+-----fetch data accroding to required datatypes----
+df.select_dtypes(include='number',exclude='timedelet')
+---- Create a table according to our requiments ---
+df=pd.DataFrame({'year':[2018,2019],'movie_name': ['Avengers1','Avengers2'],'val1':[3,5],'val3':[5,6]) # it will give only mentioned columns  which contains the rows data 
+
+
+
+
+
