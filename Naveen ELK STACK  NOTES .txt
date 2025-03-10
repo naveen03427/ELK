@@ -1122,13 +1122,53 @@ osquery beat :- runs osquery and manages interaction with it.
 				ROW a = "2023-01-23T12:15:00.000Z 127.0.0.1 some.email@foo.com 42" | GROK a """%{TIMESTAMP_ISO8601:date} %{IP:ip} %{EMAILADDRESS:email} %{NUMBER:num}""" | KEEP date, ip, email, num   ###
 				6)KEEP:  The KEEP processing command enables you to specify what columns are returned and the order in which they are returned.
 				Example: FROM employes  |  KEEP emp_no, first_name,lastname,height  #THe columns are returned in the specified order.
-				7)LIMIT
-				8)MV_EXPAND(preview)
-				9)RENAME
-				10)SORT
-				11)STATS
-				12)WHERE
+				7)LIMIT: it processing command enables you to limit the number of rows that are retunred 
+					Example: FROM employess | SORT emp_noASC | LIMIT 5
+				8)MV_EXPAND(preview) : it procressing command expands multivaued coluns into one row per value duplicating other columns.  Note L columns into one row pper value duplicating other  columns. 
+				9)RENAME :  it pprocessing command renames one orr more columns 
+					FROM employess |  KEEP first_name, last_name , still_hired | RENAME still_hired As employed ,last_name AS ln
+				10)SORT : SORT processing command sorts a tables on one or more columns 
+				Example :- FROM employees | KEEP fiirst_name,last_name,height |SORT height DESC,  first_name ASC
+				11)STATS : it is processing command groups rows accoridng to a  common value and calculates one or more aggregated values over tha grouped rows.
+				-> in STATS  we have  multiple FUNCTIONS are supported
+					---> AVG, COUNT, COUNT_DISTINCT, MAX, MEDIAN, MEDIAN_ABSOLUTE_DEVIATION, MIN, PERCENTILE, ST_CENTROID_AGG(Compute the weighted centroid from all coordinate values for geo feilds), ST_EXTENT_AGG, STD_DEV,SUM,TOP,VALUES, WEIGHTED_AVG
+				--> Follwoing group functions are suporoted
+						BUCKET, CATEGORIZE
+				example1: FROM employess | STATS avg_lanng = AVG(languages), max_lang=MAX(languages)
+				EXAMPLE 2: FROM employess |STATS avg50s=AVG(salary)::LONG WHERE birth_date <"1960-01-01",  avg60s= AVG(salary)::LONG WHERE birth_date >= "1960-01-01" BY gender |SORT gender
 				
+				12)WHERE : it processing command produces a table that contians all the rows from the input table for which the provided  condition evaluates to true.
+				example 1: FROM employees | KEEP first_name ,last_name ,still_hired | WHERE still_hired ==true
+				Example 2: FROM sample_data | WHERE @timestampe >NOW() - hour
+				Example2 : FROM employees | KEEP first_name,last_nname,height | WHERE LENGTH(first_name) <4
+		
+	####Conditional functions and expression ###
+	1)Case
+	2)COALESCE
+	3)GREATEST
+	4)LEAST
+	#### Date and time Functions ###
+	1)DATE_DIFF
+	2)DATE_EXTRACT
+	3)DATE_FORMAT
+	4)DATE_PARSE
+	5)DATE_TRUNC
+	6)NOW
+	### IP functions ##
+	1))CIDR_MATCH
+	2)IP_PREFIX
+	##### MATH FUNCTIONS##
+	ABS, ACOS, ASIN, ATAN, ATAN2, CBRT, CEIL, COS, COSH, E, EXP,  FLOOR, HYPOT,LOG,LOG10, PI, POW,ROUND,SIGNUM, SIN, SINH, SQRT, TAN, TANH, TAU.
+	#####SEARCH FUNCTIONS
+	1)KQL, MATCH, QSTR
+	###SPATIAL FUNCTIONS
+	ST_DISTANCE, ST_INTERSECTS, ST_DISJOINT, ST_CONTAINS, ST_WITHIN, ST_X, ST_Y, ST_ENVELOPE, ST_XMAX,ST_XMIN, ST_YMAX, ST_YMIN.
+	####STRING FUNCTIONS####
+		-->BIT_LENGHT, BYTE_LENGHT,CONCAT, ENDS_WITH,FROM_BASE64, HASH,LEFT,LENGHT, LOCATE,LIRIM,MD5, REPEAT,REPLACE,REVERSE,RIGHT, RTRTM, SHA1, SHA256 SPLIT, START_WITH, SUBSTRING, TO_BASE64, TO_LOWER, TO_UPPER, TRIM
+	#### TYPE CONVERSION FUNCTIONS
+	TO_BOOKEAN,TO_CARTESIANPOINT, TO CARTESIANSHAPE, TODATEPERIOD, TODATETIME, TO_DATE_NAONS,TO_DEGREES, TO_DOUBLE, TO_GEOPOINT, TO_GEOSHAPE,TO__INTEGER, TO_IP, TO_LONG, TO_RADIANS,TO_STRING,TO_TIMEDURATION,TO_UNSIGNED_LONG, TO-VERISON
+	####MULTI VALUE FUNCTIONS
+	-->MV_APPEND, MV_AVG, MVCONCAT, MVCOUNT, MV DEDUPE,MVFIRST,MVLAST,MV_MAX, MV_MEDIAN, MV_MEDIAN_ABSOLUTE_DEVIATION, MV_MIN, MV_PERCENTILE, MV_PSERIES_WEIGHTED_SUM, MV_SORT, MV_SLICE, MV_SUM, MV_ZIP.
 ## ADVANTAGES :- Faster queries, Simplified user experience, New search capabilites, QUicker insights, Accurate alering ,Do more with less.
 	source-command | processing-command | processing command 
 	
